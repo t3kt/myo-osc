@@ -34,21 +34,40 @@
 
 #define OUTPUT_BUFFER_SIZE 1024
 
-UdpTransmitSocket* transmitSocket;
+struct Settings {
+  bool accel;
+  bool gyro;
+  bool orientation;
+  bool pose;
+  bool emg;
+  bool onarm;
+  bool onarmlost;
+  bool console;
+  
+  std::string hostname;
+  int port;
+};
 
 // Classes that inherit from myo::DeviceListener can be used to receive events from Myo devices. DeviceListener
 // provides several virtual functions for handling different kinds of events. If you do not override an event, the
 // default behavior is to do nothing.
-class DataCollector : public myo::DeviceListener {
+class OscGenerator : public myo::DeviceListener {
 public:
-  DataCollector()
-  : onArm(false), roll_w(0), pitch_w(0), yaw_w(0), currentPose()
+  explicit OscGenerator(Settings settings)
+  : settings(settings), onArm(false), roll_w(0), pitch_w(0), yaw_w(0), currentPose()
   {
+    transmitSocket = new UdpTransmitSocket(IpEndpointName(settings.hostname.c_str(), settings.port));
+  }
+  
+  ~OscGenerator() override {
+    if (transmitSocket != nullptr) {
+      delete transmitSocket;
+    }
   }
   
   
   // units of g
-  void onAccelerometerData(myo::Myo* myo, uint64_t timestamp, const myo::Vector3<float>& accel)
+  void onAccelerometerData(myo::Myo* myo, uint64_t timestamp, const myo::Vector3<float>& accel) override
   {
     a_x = accel.x();
     a_y = accel.y();
@@ -62,7 +81,7 @@ public:
   }
   
   // units of deg/s
-  void onGyroscopeData(myo::Myo* myo, uint64_t timestamp, const myo::Vector3<float>& gyro)
+  void onGyroscopeData(myo::Myo* myo, uint64_t timestamp, const myo::Vector3<float>& gyro) override
   {
     g_x = gyro.x();
     g_y = gyro.y();
@@ -77,7 +96,7 @@ public:
   
   // onOrientationData() is called whenever the Myo device provides its current orientation, which is represented
   // as a unit quaternion.
-  void onOrientationData(myo::Myo* myo, uint64_t timestamp, const myo::Quaternion<float>& quat)
+  void onOrientationData(myo::Myo* myo, uint64_t timestamp, const myo::Quaternion<float>& quat) override
   {
     using std::atan2;
     using std::asin;
@@ -104,7 +123,7 @@ public:
   
   // onPose() is called whenever the Myo detects that the person wearing it has changed their pose, for example,
   // making a fist, or not making a fist anymore.
-  void onPose(myo::Myo* myo, uint64_t timestamp, myo::Pose pose)
+  void onPose(myo::Myo* myo, uint64_t timestamp, myo::Pose pose) override
   {
     currentPose = pose;
     
@@ -130,9 +149,9 @@ public:
     transmitSocket->Send(p.Data(), p.Size());
   }
   
-  // onArmRecognized() is called whenever Myo has recognized a setup gesture after someone has put it on their
+  // onArmSync() is called whenever Myo has recognized a setup gesture after someone has put it on their
   // arm. This lets Myo know which arm it's on and which way it's facing.
-  void onArmRecognized(myo::Myo* myo, uint64_t timestamp, myo::Arm arm, myo::XDirection xDirection)
+  void onArmSync(myo::Myo* myo, uint64_t timestamp, myo::Arm arm, myo::XDirection xDirection) override
   {
     onArm = true;
     whichArm = arm;
@@ -144,10 +163,10 @@ public:
     transmitSocket->Send(p.Data(), p.Size());
   }
   
-  // onArmLost() is called whenever Myo has detected that it was moved from a stable position on a person's arm after
+  // onArmUnsync() is called whenever Myo has detected that it was moved from a stable position on a person's arm after
   // it recognized the arm. Typically this happens when someone takes Myo off of their arm, but it can also happen
   // when Myo is moved around on the arm.
-  void onArmLost(myo::Myo* myo, uint64_t timestamp)
+  void onArmUnsync(myo::Myo* myo, uint64_t timestamp) override
   {
     onArm = false;
     osc::OutboundPacketStream p(buffer, OUTPUT_BUFFER_SIZE);
@@ -163,6 +182,8 @@ public:
   // We define this function to print the current values that were updated by the on...() functions above.
   void print()
   {
+    if (!settings.console)
+      return;
     // Clear the current line
     std::cout << '\r';
     
@@ -198,10 +219,24 @@ public:
   float w, x, y, z, roll, pitch, yaw, a_x, a_y, a_z, g_x, g_y, g_z;
   myo::Pose currentPose;
   char buffer[OUTPUT_BUFFER_SIZE];
+  
+  UdpTransmitSocket* transmitSocket;
+  Settings settings;
 };
 
 int main(int argc, char** argv)
 {
+  Settings settings;
+  settings.accel = true;
+  settings.gyro = true;
+  settings.orientation = true;
+  settings.pose = true;
+  settings.emg = true;
+  settings.onarm = true;
+  settings.onarmlost = true;
+  settings.console = true;
+  settings.port = 7777;
+  settings.hostname = "127.0.0.1";
   // We catch any exceptions that might occur below -- see the catch statement for more details.
   try
   {
@@ -216,25 +251,22 @@ int main(int argc, char** argv)
     
     if (argc == 1)
     {
-      int port = 7777;
-      std::cout << "Sending Myo OSC to 127.0.0.1:7777\n";
-      transmitSocket = new UdpTransmitSocket(IpEndpointName("127.0.0.1", port));
     }
     else if (argc == 2)
     {
-      std::cout << "Sending Myo OSC to 127.0.0.1:" << argv[1] << "\n";
-      transmitSocket = new UdpTransmitSocket(IpEndpointName("127.0.0.1", atoi(argv[1])));
+      settings.port = atoi(argv[1]);
     }
     else if (argc == 3)
     {
-      std::cout << "Sending Myo OSC to " << argv[1] << ":" << argv[2] << "\n";
-      transmitSocket = new UdpTransmitSocket(IpEndpointName(argv[1], atoi(argv[2])));
+      settings.hostname = argv[1];
+      settings.port = atoi(argv[2]);
     }
     else
     {
       std::cout << "well this awkward -- weird argc: " << argc << "\n";
       exit(0);
     }
+    std::cout << "Sending Myo OSC to " << settings.hostname << ":" << settings.port << "\n";
     
     
     // First, we create a Hub with our application identifier. Be sure not to use the com.example namespace when
@@ -260,7 +292,7 @@ int main(int argc, char** argv)
     myo->setStreamEmg(myo::Myo::streamEmgEnabled);
     
     // Next we construct an instance of our DeviceListener, so that we can register it with the Hub.
-    DataCollector collector;
+    OscGenerator collector(settings);
     
     // Hub::addListener() takes the address of any object whose class inherits from DeviceListener, and will cause
     // Hub::run() to send events to all registered device listeners.
