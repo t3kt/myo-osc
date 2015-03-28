@@ -15,9 +15,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
-//#define MAC myo->macAddressAsString().c_str()
-#define MAC "00:00:00:00:00:00" // beta release 1 removed macs :(
-
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <iostream>
@@ -73,11 +70,8 @@ public:
     a_y = accel.y();
     a_z = accel.z();
     
-    osc::OutboundPacketStream p(buffer, OUTPUT_BUFFER_SIZE);
-    p << osc::BeginMessage("/myo/accel")
-    << MAC
-    << a_x << a_y << a_z << osc::EndMessage;
-    transmitSocket->Send(p.Data(), p.Size());
+    send(beginMessage("/myo/accel")
+         << a_x << a_y << a_z << osc::EndMessage);
   }
   
   // units of deg/s
@@ -87,11 +81,8 @@ public:
     g_y = gyro.y();
     g_z = gyro.z();
     
-    osc::OutboundPacketStream p(buffer, OUTPUT_BUFFER_SIZE);
-    p << osc::BeginMessage("/myo/gyro")
-    << MAC
-    << g_x << g_y << g_z << osc::EndMessage;
-    transmitSocket->Send(p.Data(), p.Size());
+    send(beginMessage("/myo/gyro")
+         << g_x << g_y << g_z << osc::EndMessage);
   }
   
   // onOrientationData() is called whenever the Myo device provides its current orientation, which is represented
@@ -109,11 +100,9 @@ public:
     float yaw = atan2(2.0f * (quat.w() * quat.z() + quat.x() * quat.y()),
                       1.0f - 2.0f * (quat.y() * quat.y() + quat.z() * quat.z()));
     
-    osc::OutboundPacketStream p(buffer, OUTPUT_BUFFER_SIZE);
-				p << osc::BeginMessage("/myo/orientation")
-    << MAC
-    << quat.x() << quat.y() << quat.z() << quat.w() << roll << pitch << yaw << osc::EndMessage;
-    transmitSocket->Send(p.Data(), p.Size());
+    send(beginMessage("/myo/orientation")
+         << quat.x() << quat.y() << quat.z() << quat.w()
+         << roll << pitch << yaw << osc::EndMessage);
     
     // Convert the floating point angles in radians to a scale from 0 to 20.
     roll_w = static_cast<int>((roll + (float)M_PI)/(M_PI * 2.0f) * 18);
@@ -127,11 +116,8 @@ public:
   {
     currentPose = pose;
     
-    osc::OutboundPacketStream p(buffer, OUTPUT_BUFFER_SIZE);
-    p << osc::BeginMessage("/myo/pose")
-    << MAC
-    << currentPose.toString().c_str() << osc::EndMessage;
-    transmitSocket->Send(p.Data(), p.Size());
+    send(beginMessage("/myo/pose")
+      << currentPose.toString().c_str() << osc::EndMessage);
     
     // Vibrate the Myo whenever we've detected that the user has made a fist.
     if (pose == myo::Pose::fist) {
@@ -140,13 +126,10 @@ public:
   }
   
   void onEmgData(myo::Myo* myo, uint64_t timestamp, const int8_t* emg) override {
-    osc::OutboundPacketStream p(buffer, OUTPUT_BUFFER_SIZE);
-    p << osc::BeginMessage("/myo/emg")
-    << MAC
-    << emg[0] << emg[1] << emg[2] << emg[3]
-    << emg[4] << emg[5] << emg[6] << emg[7]
-    << osc::EndMessage;
-    transmitSocket->Send(p.Data(), p.Size());
+    send(beginMessage("/myo/emg")
+      << emg[0] << emg[1] << emg[2] << emg[3]
+      << emg[4] << emg[5] << emg[6] << emg[7]
+      << osc::EndMessage);
   }
   
   // onArmSync() is called whenever Myo has recognized a setup gesture after someone has put it on their
@@ -156,11 +139,8 @@ public:
     onArm = true;
     whichArm = arm;
     
-    osc::OutboundPacketStream p(buffer, OUTPUT_BUFFER_SIZE);
-    p << osc::BeginMessage("/myo/onarm")
-    << MAC
-    << (whichArm == myo::armLeft ? "L" : "R") << osc::EndMessage;
-    transmitSocket->Send(p.Data(), p.Size());
+    send(beginMessage("/myo/onarm")
+         << (whichArm == myo::armLeft ? "L" : "R") << osc::EndMessage);
   }
   
   // onArmUnsync() is called whenever Myo has detected that it was moved from a stable position on a person's arm after
@@ -169,10 +149,17 @@ public:
   void onArmUnsync(myo::Myo* myo, uint64_t timestamp) override
   {
     onArm = false;
+    send(beginMessage("/myo/onarmlost")
+         << osc::EndMessage);
+  }
+  
+  inline osc::OutboundPacketStream beginMessage(const char* message) {
     osc::OutboundPacketStream p(buffer, OUTPUT_BUFFER_SIZE);
-    p << osc::BeginMessage("/myo/onarmlost")
-    << MAC
-    << osc::EndMessage;
+    p << osc::BeginMessage(message);
+    return p;
+  }
+  
+  void send(const osc::OutboundPacketStream& p) {
     transmitSocket->Send(p.Data(), p.Size());
   }
   
@@ -289,7 +276,8 @@ int main(int argc, char** argv)
     // We've found a Myo.
     std::cout << "Connected to a Myo armband!" << std::endl << std::endl;
     
-    myo->setStreamEmg(myo::Myo::streamEmgEnabled);
+    if (settings.emg)
+      myo->setStreamEmg(myo::Myo::streamEmgEnabled);
     
     // Next we construct an instance of our DeviceListener, so that we can register it with the Hub.
     OscGenerator collector(settings);
