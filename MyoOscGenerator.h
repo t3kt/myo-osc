@@ -108,19 +108,7 @@ public:
   void sendMessage(const std::string& path, const myo::Vector3<float>& vec1, const myo::Vector3<float>& vec2);
   void sendMessage(const std::string& path, const myo::Quaternion<float>& quat);
   
-  // We define this function to print the current values that were updated by the on...() functions above.
-  void print();
-  
-  // These values are set by onArmRecognized() and onArmLost() above.
-  bool onArm;
-  myo::Arm whichArm;
-  
-  // These values are set by onOrientationData() and onPose() above.
-  int roll_w, pitch_w, yaw_w;
-  float w, x, y, z, roll, pitch, yaw, a_x, a_y, a_z, g_x, g_y, g_z;
-  myo::Pose currentPose;
   char buffer[OUTPUT_BUFFER_SIZE];
-  
   UdpTransmitSocket* transmitSocket;
   Settings settings;
 };

@@ -130,7 +130,7 @@ void MyoOscGenerator::sendMessage(const std::string& path, const myo::Quaternion
 }
 
 MyoOscGenerator::MyoOscGenerator(Settings settings)
-: settings(settings), onArm(false), roll_w(0), pitch_w(0), yaw_w(0), currentPose()
+: settings(settings)
 {
   transmitSocket = new UdpTransmitSocket(IpEndpointName(settings.hostname.c_str(), settings.port));
 }
@@ -193,11 +193,6 @@ void MyoOscGenerator::onOrientationData(myo::Myo* myo, uint64_t timestamp, const
   if (settings.orientation) {
     auto ypr = quaternionToVector(quat);
     sendMessage(settings.orientation.path, ypr);
-    
-    // Convert the floating point angles in radians to a scale from 0 to 20.
-    roll_w = static_cast<int>((ypr[0] + (float)M_PI)/(M_PI * 2.0f) * 18);
-    pitch_w = static_cast<int>((ypr[1] + (float)M_PI/2.0f)/M_PI * 18);
-    yaw_w = static_cast<int>((ypr[2] + (float)M_PI)/(M_PI * 2.0f) * 18);
   }
 }
 
@@ -207,9 +202,8 @@ void MyoOscGenerator::onPose(myo::Myo* myo, uint64_t timestamp, myo::Pose pose)
 {
   if (!settings.pose)
     return;
-  currentPose = pose;
   
-  sendMessage(settings.pose.path, currentPose.toString().c_str());
+  sendMessage(settings.pose.path, pose.toString().c_str());
   
   // Vibrate the Myo whenever we've detected that the user has made a fist.
   if (pose == myo::Pose::fist) {
@@ -235,10 +229,7 @@ void MyoOscGenerator::onArmSync(myo::Myo* myo, uint64_t timestamp, myo::Arm arm,
 {
   if (!settings.sync)
     return;
-  onArm = true;
-  whichArm = arm;
-  
-  sendMessage(settings.sync.path, (whichArm == myo::armLeft ? "L" : "R"));
+  sendMessage(settings.sync.path, (arm == myo::armLeft ? "L" : "R"));
 }
 
 // onArmUnsync() is called whenever Myo has detected that it was moved from a stable position on a person's arm after
@@ -248,37 +239,5 @@ void MyoOscGenerator::onArmUnsync(myo::Myo* myo, uint64_t timestamp)
 {
   if (!settings.sync)
     return;
-  onArm = false;
   sendMessage(settings.sync.path, "-");
-}
-
-// We define this function to print the current values that were updated by the on...() functions above.
-void MyoOscGenerator::print()
-{
-  if (!settings.console)
-    return;
-  // Clear the current line
-  std::cout << '\r';
-  
-  // Print out the orientation. Orientation data is always available, even if no arm is currently recognized.
-  std::cout << '[' << std::string(roll_w, '*') << std::string(18 - roll_w, ' ') << ']'
-  << '[' << std::string(pitch_w, '*') << std::string(18 - pitch_w, ' ') << ']'
-  << '[' << std::string(yaw_w, '*') << std::string(18 - yaw_w, ' ') << ']';
-  
-  if (onArm) {
-    // Print out the currently recognized pose and which arm Myo is being worn on.
-    
-    // Pose::toString() provides the human-readable name of a pose. We can also output a Pose directly to an
-    // output stream (e.g. std::cout << currentPose;). In this case we want to get the pose name's length so
-    // that we can fill the rest of the field with spaces below, so we obtain it as a string using toString().
-    std::string poseString = currentPose.toString();
-    
-    std::cout << '[' << (whichArm == myo::armLeft ? "L" : "R") << ']'
-    << '[' << poseString << std::string(14 - poseString.size(), ' ') << ']';
-  } else {
-    // Print out a placeholder for the arm and pose when Myo doesn't currently know which arm it's on.
-    std::cout << "[?]" << '[' << std::string(14, ' ') << ']';
-  }
-  
-  std::cout << std::flush;
 }

@@ -102,7 +102,6 @@ const option::Descriptor usage[] = {
   {RSSI,        DISABLE,      "R",  "norssi",     Arg::None,      "--norssi Disable RSSI (signal strength) output"},
   {SYNC,        ENABLE,       "s",  "sync",       Arg::Optional,  "--emg Enable sync/unsync output"},
   {SYNC,        DISABLE,      "S",  "nosync",     Arg::None,      "--noemg Disable sync/unsync output"},
-  {CONSOLE,     DISABLE,      "C",  "noconsole",  Arg::None,      "--noconsole Disable console value display"},
   {LOGOSC,      ENABLE,       "l",  "log",        Arg::None,      "--log Enable OSC debug logging."},
   {HELP,        0,            "",   "help",       Arg::None,      "--help Print usage and exit."},
   {0, 0, 0, 0, 0, 0},
@@ -136,7 +135,6 @@ bool parseArgs(int argc, char **argv, Settings* settings) {
   
   settings->port = 7777;
   settings->hostname = "127.0.0.1";
-  settings->console = true;
   settings->logOsc = false;
   settings->accel = {false, "/myo/accel"};
   settings->gyro = {false, "/myo/gyro"};
@@ -172,9 +170,6 @@ bool parseArgs(int argc, char **argv, Settings* settings) {
         break;
       case RSSI:
         setArg(&settings->rssi, opt);
-        break;
-      case CONSOLE:
-        settings->console = opt.type() == ENABLE;
         break;
       case LOGOSC:
         settings->logOsc = opt.type() == ENABLE;
@@ -254,9 +249,6 @@ int main(int argc, char** argv)
       if (settings.rssi) {
         myo->requestRssi();
       }
-      // After processing events, we call the print() member function we defined above to print out the values we've
-      // obtained from any events that have occurred.
-      collector.print();
     }
     
     // If a standard exception occurred, we print out its message and exit.
