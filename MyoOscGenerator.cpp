@@ -13,6 +13,10 @@
 
 #include "MyoOscGenerator.h"
 
+#define _USE_MATH_DEFINES
+#include <cmath>
+#include <iomanip>
+
 std::ostream& operator<<(std::ostream& os, const Settings& settings) {
   return os << "Settings<\n"
   << "  accel: " << settings.accel << "\n"
@@ -21,6 +25,7 @@ std::ostream& operator<<(std::ostream& os, const Settings& settings) {
   << "  pose: " << settings.pose << "\n"
   << "  emg: " << settings.emg << "\n"
   << "  sync: " << settings.sync << "\n"
+  << "  rssi: " << settings.rssi << "\n"
   << "  console: " << settings.console << "\n"
   << ">\n";
 }
@@ -115,6 +120,14 @@ void MyoOscGenerator::onPose(myo::Myo* myo, uint64_t timestamp, myo::Pose pose)
   if (pose == myo::Pose::fist) {
     myo->vibrate(myo::Myo::vibrationShort);
   }
+}
+
+void MyoOscGenerator::onRssi(myo::Myo *myo, uint64_t timestamp, int8_t rssi) {
+  if (!settings.rssi)
+    return;
+  send(beginMessage("/myo/rssi")
+       << rssi
+       << osc::EndMessage);
 }
 
 void MyoOscGenerator::onEmgData(myo::Myo* myo, uint64_t timestamp, const int8_t* emg) {

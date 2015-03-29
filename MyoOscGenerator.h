@@ -15,11 +15,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#define _USE_MATH_DEFINES
-#include <cmath>
 #include <iostream>
-#include <iomanip>
-#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -39,6 +35,7 @@ struct Settings {
   bool pose;
   bool emg;
   bool sync;
+  bool rssi;
   bool console;
   
   std::string hostname;
@@ -70,7 +67,12 @@ public:
   // making a fist, or not making a fist anymore.
   void onPose(myo::Myo* myo, uint64_t timestamp, myo::Pose pose) override;
   
+  // onEmgData() is called whenever the Myo receives EMG data
   void onEmgData(myo::Myo* myo, uint64_t timestamp, const int8_t* emg) override;
+  
+  // onRssi() is called whenever the Myo receives a RSSI value
+  // (received signal strength indication)
+  void onRssi(myo::Myo* myo, uint64_t timestamp, int8_t rssi) override;
   
   // onArmSync() is called whenever Myo has recognized a setup gesture after someone has put it on their
   // arm. This lets Myo know which arm it's on and which way it's facing.

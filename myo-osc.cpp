@@ -17,6 +17,7 @@
 
 #include "MyoOscGenerator.h"
 
+#include <stdexcept>
 #include "optionparser.h"
 
 enum optionIndex {
@@ -27,6 +28,7 @@ enum optionIndex {
   POSE,
   EMG,
   SYNC,
+  RSSI,
   CONSOLE,
   HELP
 };
@@ -50,6 +52,8 @@ const option::Descriptor usage[] = {
   {POSE, DISABLE, "P", "nopose", option::Arg::None, "--nopose Disable pose output"},
   {EMG, ENABLE, "e", "emg", option::Arg::None, "--emg Enable EMG output"},
   {EMG, DISABLE, "E", "noemg", option::Arg::None, "--noemg Disable EMG output"},
+  {RSSI, ENABLE, "r", "rssi", option::Arg::None, "--rssi Enable RSSI (signal strength) output"},
+  {RSSI, DISABLE, "R", "norssi", option::Arg::None, "--norssi Disable RSSI (signal strength) output"},
   {SYNC, ENABLE, "s", "sync", option::Arg::None, "--emg Enable sync/unsync output"},
   {SYNC, DISABLE, "S", "nosync", option::Arg::None, "--noemg Disable sync/unsync output"},
   {CONSOLE, DISABLE, "C", "noconsole", option::Arg::None, "--noconsole Disable console value display"},
@@ -75,6 +79,7 @@ bool parseArgs(int argc, char **argv, Settings* settings) {
   settings->port = 7777;
   settings->hostname = "127.0.0.1";
   settings->console = true;
+  settings->rssi = false;
   
   if (options[ACCEL].count() ||
       options[GYRO].count() ||
@@ -119,6 +124,9 @@ bool parseArgs(int argc, char **argv, Settings* settings) {
         break;
       case CONSOLE:
         settings->console = opt.type() == ENABLE;
+        break;
+      case RSSI:
+        settings->rssi = opt.type() == ENABLE;
         break;
       case UNKNOWN:
         std::cout << "Unknown option: " << std::string(opt.name, opt.namelen) << "\n\n";
