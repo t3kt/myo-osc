@@ -45,21 +45,25 @@ static void logPath(const std::string& path) {
   std::cout << std::setw(20) << std::setfill(' ') << std::left << (path + ":");
 }
 
-static void logVector(const myo::Vector3<float>& vec) {
-  std::cout << "  " << std::setw(10) << std::right << std::setprecision(2) << vec.x();
-  std::cout << "  " << std::setw(10) << std::right << std::setprecision(2) << vec.y();
-  std::cout << "  " << std::setw(10) << std::right << std::setprecision(2) << vec.z();
-}
-
-static void logQuaterion(const myo::Quaternion<float>& quat) {
-  std::cout << "  " << std::setw(10) << std::right << std::setprecision(2) << quat.x();
-  std::cout << "  " << std::setw(10) << std::right << std::setprecision(2) << quat.y();
-  std::cout << "  " << std::setw(10) << std::right << std::setprecision(2) << quat.z();
-  std::cout << "  " << std::setw(10) << std::right << std::setprecision(2) << quat.w();
+static void logVal(float val) {
+  std::cout << "  " << std::setw(10) << std::right << std::setprecision(2) << val;
 }
 
 static void logVal(int8_t val) {
   std::cout << "  " << std::setw(10) << std::right << (int)val;
+}
+
+static void logVector(const myo::Vector3<float>& vec) {
+  logVal(vec.x());
+  logVal(vec.y());
+  logVal(vec.z());
+}
+
+static void logQuaterion(const myo::Quaternion<float>& quat) {
+  logVal(quat.x());
+  logVal(quat.y());
+  logVal(quat.z());
+  logVal(quat.w());
 }
 
 void MyoOscGenerator::sendMessage(const std::string &path, int8_t val) {
@@ -81,7 +85,7 @@ void MyoOscGenerator::sendMessage(const std::string &path, const int8_t* vals, i
   if (settings.logOsc) {
     logPath(path);
     for (int i = 0; i < count; ++i) {
-      logVal((int)vals[i]);
+      logVal(vals[i]);
     }
     std::cout << std::endl;
   }
@@ -149,9 +153,6 @@ osc::OutboundPacketStream MyoOscGenerator::beginMessage(const std::string& messa
 
 void MyoOscGenerator::send(const osc::OutboundPacketStream& p) {
   transmitSocket->Send(p.Data(), p.Size());
-//  if (settings.logOsc) {
-//    std::cout << "  " << p.Data() << std::endl;
-//  }
 }
 
 // units of g
@@ -170,7 +171,7 @@ void MyoOscGenerator::onGyroscopeData(myo::Myo* myo, uint64_t timestamp, const m
   sendMessage(settings.gyro.path, gyro);
 }
 
-myo::Vector3<float> quaternionToVector(const myo::Quaternion<float>& quat) {
+static myo::Vector3<float> quaternionToVector(const myo::Quaternion<float>& quat) {
   // Calculate Euler angles (roll, pitch, and yaw) from the unit quaternion.
   float yaw = atan2(2.0f * (quat.w() * quat.z() + quat.x() * quat.y()),
                     1.0f - 2.0f * (quat.y() * quat.y() + quat.z() * quat.z()));
