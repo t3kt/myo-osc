@@ -67,6 +67,7 @@ enum optionIndex {
   ACCEL,
   GYRO,
   ORIENT,
+  ORIENTQUAT,
   POSE,
   EMG,
   SYNC,
@@ -91,6 +92,8 @@ const option::Descriptor usage[] = {
   {GYRO,        DISABLE,      "G",  "nogyro",     Arg::None,      "--nogyro Disable gyroscope output"},
   {ORIENT,      ENABLE,       "o",  "orient",     Arg::Optional,  "--orient Enable orientation output"},
   {ORIENT,      DISABLE,      "O",  "noorient",   Arg::None,      "--noorient Disable orientation output"},
+  {ORIENTQUAT,  ENABLE,       "q",  "quat",       Arg::Optional,  "--quat Enable orientation quaternion output"},
+  {ORIENTQUAT,  DISABLE,      "Q",  "noquat",     Arg::None,      "--noquat Disable orientation quaternion output"},
   {POSE,        ENABLE,       "p",  "pose",       Arg::Optional,  "--pose Enable pose output"},
   {POSE,        DISABLE,      "P",  "nopose",     Arg::None,      "--nopose Disable pose output"},
   {EMG,         ENABLE,       "e",  "emg",        Arg::Optional,  "--emg Enable EMG output"},
@@ -138,6 +141,7 @@ bool parseArgs(int argc, char **argv, Settings* settings) {
   settings->accel = {false, "/myo/accel"};
   settings->gyro = {false, "/myo/gyro"};
   settings->orientation = {false, "/myo/orientation"};
+  settings->orientationQuat = {false, "/myo/orientationquat"};
   settings->pose = {false, "/myo/pose"};
   settings->emg = {false, "/myo/emg"};
   settings->sync = {false, "/myo/arm"};
@@ -153,6 +157,9 @@ bool parseArgs(int argc, char **argv, Settings* settings) {
         break;
       case ORIENT:
         setArg(&settings->orientation, opt);
+        break;
+      case ORIENTQUAT:
+        setArg(&settings->orientationQuat, opt);
         break;
       case POSE:
         setArg(&settings->pose, opt);

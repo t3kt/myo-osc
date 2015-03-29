@@ -119,14 +119,12 @@ void MyoOscGenerator::sendMessage(const std::string& path, const myo::Vector3<fl
   }
 }
 
-void MyoOscGenerator::sendMessage(const std::string& path, const myo::Quaternion<float>& quat1, const myo::Vector3<float>& vec2) {
+void MyoOscGenerator::sendMessage(const std::string& path, const myo::Quaternion<float>& quat) {
   send(beginMessage(path)
-       << quat1.x() << quat1.y() << quat1.z() << quat1.w()
-       << vec2.x() << vec2.y() << vec2.z() << osc::EndMessage);
+       << quat.x() << quat.y() << quat.z() << quat.w() << osc::EndMessage);
   if (settings.logOsc) {
     logPath(path);
-    logQuaterion(quat1);
-    logVector(vec2);
+    logQuaterion(quat);
     std::cout << std::endl;
   }
 }
@@ -172,29 +170,35 @@ void MyoOscGenerator::onGyroscopeData(myo::Myo* myo, uint64_t timestamp, const m
   sendMessage(settings.gyro.path, gyro);
 }
 
+myo::Vector3<float> quaternionToVector(const myo::Quaternion<float>& quat) {
+  // Calculate Euler angles (roll, pitch, and yaw) from the unit quaternion.
+  float yaw = atan2(2.0f * (quat.w() * quat.z() + quat.x() * quat.y()),
+                    1.0f - 2.0f * (quat.y() * quat.y() + quat.z() * quat.z()));
+  float pitch = asin(2.0f * (quat.w() * quat.y() - quat.z() * quat.x()));
+  float roll = atan2(2.0f * (quat.w() * quat.x() + quat.y() * quat.z()),
+                     1.0f - 2.0f * (quat.x() * quat.x() + quat.y() * quat.y()));
+  return myo::Vector3<float>(yaw, pitch, roll);
+}
+
 // onOrientationData() is called whenever the Myo device provides its current orientation, which is represented
 // as a unit quaternion.
 void MyoOscGenerator::onOrientationData(myo::Myo* myo, uint64_t timestamp, const myo::Quaternion<float>& quat)
 {
-  if (!settings.orientation)
+  if (!settings.orientation && !settings.orientationQuat)
     return;
-  using std::atan2;
-  using std::asin;
-  using std::sqrt;
   
-  // Calculate Euler angles (roll, pitch, and yaw) from the unit quaternion.
-  float roll = atan2(2.0f * (quat.w() * quat.x() + quat.y() * quat.z()),
-                     1.0f - 2.0f * (quat.x() * quat.x() + quat.y() * quat.y()));
-  float pitch = asin(2.0f * (quat.w() * quat.y() - quat.z() * quat.x()));
-  float yaw = atan2(2.0f * (quat.w() * quat.z() + quat.x() * quat.y()),
-                    1.0f - 2.0f * (quat.y() * quat.y() + quat.z() * quat.z()));
+  if (settings.orientationQuat)
+    sendMessage(settings.orientationQuat.path, quat);
   
-  sendMessage(settings.orientation.path, quat, myo::Vector3<float>(roll, pitch, yaw));
-  
-  // Convert the floating point angles in radians to a scale from 0 to 20.
-  roll_w = static_cast<int>((roll + (float)M_PI)/(M_PI * 2.0f) * 18);
-  pitch_w = static_cast<int>((pitch + (float)M_PI/2.0f)/M_PI * 18);
-  yaw_w = static_cast<int>((yaw + (float)M_PI)/(M_PI * 2.0f) * 18);
+  if (settings.orientation) {
+    auto ypr = quaternionToVector(quat);
+    sendMessage(settings.orientation.path, ypr);
+    
+    // Convert the floating point angles in radians to a scale from 0 to 20.
+    roll_w = static_cast<int>((ypr[0] + (float)M_PI)/(M_PI * 2.0f) * 18);
+    pitch_w = static_cast<int>((ypr[1] + (float)M_PI/2.0f)/M_PI * 18);
+    yaw_w = static_cast<int>((ypr[2] + (float)M_PI)/(M_PI * 2.0f) * 18);
+  }
 }
 
 // onPose() is called whenever the Myo detects that the person wearing it has changed their pose, for example,

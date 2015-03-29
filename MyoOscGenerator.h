@@ -43,6 +43,7 @@ struct Settings {
   OutputType accel;
   OutputType gyro;
   OutputType orientation;
+  OutputType orientationQuat;
   OutputType pose;
   OutputType emg;
   OutputType sync;
@@ -105,7 +106,7 @@ public:
   void sendMessage(const std::string& path, const char* val);
   void sendMessage(const std::string& path, const myo::Vector3<float>& vec);
   void sendMessage(const std::string& path, const myo::Vector3<float>& vec1, const myo::Vector3<float>& vec2);
-  void sendMessage(const std::string& path, const myo::Quaternion<float>& quat1, const myo::Vector3<float>& vec2);
+  void sendMessage(const std::string& path, const myo::Quaternion<float>& quat);
   
   // We define this function to print the current values that were updated by the on...() functions above.
   void print();
