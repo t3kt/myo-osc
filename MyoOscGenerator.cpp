@@ -197,8 +197,7 @@ void MyoOscGenerator::onPose(myo::Myo* myo, uint64_t timestamp, myo::Pose pose)
     return;
   currentPose = pose;
   
-  send(beginMessage(settings.posePath)
-       << currentPose.toString().c_str() << osc::EndMessage);
+  sendMessage(settings.posePath, currentPose.toString().c_str());
   
   // Vibrate the Myo whenever we've detected that the user has made a fist.
   if (pose == myo::Pose::fist) {

@@ -259,6 +259,8 @@ int main(int argc, char** argv)
     // Hub::run() to send events to all registered device listeners.
     hub.addListener(&collector);
     
+    myo->unlock(myo::Myo::unlockHold);
+    
     // Finally we enter our main loop.
     while (1) {
       // In each iteration of our main loop, we run the Myo event loop for a set number of milliseconds.
