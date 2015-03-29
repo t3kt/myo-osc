@@ -2,3 +2,4 @@ build/
 *.xccheckout
 *.xcuserstate
 myo-osc.xcodeproj/xcuserdata/
+myo-osc.xcodeproj/project.xcworkspace/xcuserdata/
