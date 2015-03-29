@@ -38,6 +38,14 @@ struct Settings {
   bool rssi;
   bool console;
   
+  std::string accelPath;
+  std::string gyroPath;
+  std::string orientationPath;
+  std::string posePath;
+  std::string emgPath;
+  std::string syncPath;
+  std::string rssiPath;
+  
   std::string hostname;
   int port;
 };
@@ -83,7 +91,7 @@ public:
   // when Myo is moved around on the arm.
   void onArmUnsync(myo::Myo* myo, uint64_t timestamp) override;
   
-  osc::OutboundPacketStream beginMessage(const char* message);
+  osc::OutboundPacketStream beginMessage(const std::string& message);
   
   void send(const osc::OutboundPacketStream& p);
   

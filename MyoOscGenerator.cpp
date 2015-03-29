@@ -18,14 +18,17 @@
 #include <iomanip>
 
 std::ostream& operator<<(std::ostream& os, const Settings& settings) {
-  return os << "Settings<\n"
-  << "  accel: " << settings.accel << "\n"
-  << "  gyro: " << settings.gyro << "\n"
-  << "  orientation: " << settings.orientation << "\n"
-  << "  pose: " << settings.pose << "\n"
-  << "  emg: " << settings.emg << "\n"
-  << "  sync: " << settings.sync << "\n"
-  << "  rssi: " << settings.rssi << "\n"
+  static const std::string none("(none)");
+  return os << std::boolalpha << "Settings<\n"
+  << "  hostname: " << settings.hostname << "\n"
+  << "  port: " << settings.port << "\n"
+  << "  accel: " << (settings.accel ? settings.accelPath : none) << "\n"
+  << "  gyro: " << (settings.gyro ? settings.gyroPath : none) << "\n"
+  << "  orientation: " << (settings.orientation ? settings.orientationPath : none) << "\n"
+  << "  pose: " << (settings.pose ? settings.posePath : none) << "\n"
+  << "  emg: " << (settings.emg ? settings.emgPath : none) << "\n"
+  << "  sync: " << (settings.sync ? settings.syncPath : none) << "\n"
+  << "  rssi: " << (settings.rssi ? settings.rssiPath : none) << "\n"
   << "  console: " << settings.console << "\n"
   << ">\n";
 }
@@ -42,9 +45,9 @@ MyoOscGenerator::~MyoOscGenerator() {
   }
 }
 
-osc::OutboundPacketStream MyoOscGenerator::beginMessage(const char* message) {
+osc::OutboundPacketStream MyoOscGenerator::beginMessage(const std::string& message) {
   osc::OutboundPacketStream p(buffer, OUTPUT_BUFFER_SIZE);
-  p << osc::BeginMessage(message);
+  p << osc::BeginMessage(message.c_str());
   return p;
 }
 
@@ -61,7 +64,7 @@ void MyoOscGenerator::onAccelerometerData(myo::Myo* myo, uint64_t timestamp, con
   a_y = accel.y();
   a_z = accel.z();
   
-  send(beginMessage("/myo/accel")
+  send(beginMessage(settings.accelPath)
        << accel.x() << accel.y() << accel.z() << osc::EndMessage);
 }
 
@@ -74,7 +77,7 @@ void MyoOscGenerator::onGyroscopeData(myo::Myo* myo, uint64_t timestamp, const m
   g_y = gyro.y();
   g_z = gyro.z();
   
-  send(beginMessage("/myo/gyro")
+  send(beginMessage(settings.gyroPath)
        << g_x << g_y << g_z << osc::EndMessage);
 }
 
@@ -95,7 +98,7 @@ void MyoOscGenerator::onOrientationData(myo::Myo* myo, uint64_t timestamp, const
   float yaw = atan2(2.0f * (quat.w() * quat.z() + quat.x() * quat.y()),
                     1.0f - 2.0f * (quat.y() * quat.y() + quat.z() * quat.z()));
   
-  send(beginMessage("/myo/orientation")
+  send(beginMessage(settings.orientationPath)
        << quat.x() << quat.y() << quat.z() << quat.w()
        << roll << pitch << yaw << osc::EndMessage);
   
@@ -113,7 +116,7 @@ void MyoOscGenerator::onPose(myo::Myo* myo, uint64_t timestamp, myo::Pose pose)
     return;
   currentPose = pose;
   
-  send(beginMessage("/myo/pose")
+  send(beginMessage(settings.posePath)
        << currentPose.toString().c_str() << osc::EndMessage);
   
   // Vibrate the Myo whenever we've detected that the user has made a fist.
@@ -125,7 +128,7 @@ void MyoOscGenerator::onPose(myo::Myo* myo, uint64_t timestamp, myo::Pose pose)
 void MyoOscGenerator::onRssi(myo::Myo *myo, uint64_t timestamp, int8_t rssi) {
   if (!settings.rssi)
     return;
-  send(beginMessage("/myo/rssi")
+  send(beginMessage(settings.rssiPath)
        << rssi
        << osc::EndMessage);
 }
@@ -133,7 +136,7 @@ void MyoOscGenerator::onRssi(myo::Myo *myo, uint64_t timestamp, int8_t rssi) {
 void MyoOscGenerator::onEmgData(myo::Myo* myo, uint64_t timestamp, const int8_t* emg) {
   if (!settings.emg)
     return;
-  send(beginMessage("/myo/emg")
+  send(beginMessage(settings.emgPath)
        << emg[0] << emg[1] << emg[2] << emg[3]
        << emg[4] << emg[5] << emg[6] << emg[7]
        << osc::EndMessage);
@@ -148,7 +151,7 @@ void MyoOscGenerator::onArmSync(myo::Myo* myo, uint64_t timestamp, myo::Arm arm,
   onArm = true;
   whichArm = arm;
   
-  send(beginMessage("/myo/onarm")
+  send(beginMessage(settings.syncPath)
        << (whichArm == myo::armLeft ? "L" : "R") << osc::EndMessage);
 }
 
@@ -160,8 +163,8 @@ void MyoOscGenerator::onArmUnsync(myo::Myo* myo, uint64_t timestamp)
   if (!settings.sync)
     return;
   onArm = false;
-  send(beginMessage("/myo/onarmlost")
-       << osc::EndMessage);
+  send(beginMessage(settings.syncPath)
+       << "-" << osc::EndMessage);
 }
 
 // We define this function to print the current values that were updated by the on...() functions above.

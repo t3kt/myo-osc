@@ -20,6 +20,48 @@
 #include <stdexcept>
 #include "optionparser.h"
 
+struct Arg : public option::Arg {
+  static void printError(const char* msg1, const option::Option& opt, const char* msg2)
+  {
+    std::cerr << msg1 << std::string(opt.name, opt.namelen) << msg2;
+  }
+  
+  static option::ArgStatus Unknown(const option::Option& option, bool msg)
+  {
+    if (msg) printError("Unknown option '", option, "'\n");
+    return option::ARG_ILLEGAL;
+  }
+  
+  static option::ArgStatus Required(const option::Option& option, bool msg)
+  {
+    if (option.arg != 0)
+      return option::ARG_OK;
+    
+    if (msg) printError("Option '", option, "' requires an argument\n");
+    return option::ARG_ILLEGAL;
+  }
+  
+  static option::ArgStatus NonEmpty(const option::Option& option, bool msg)
+  {
+    if (option.arg != 0 && option.arg[0] != 0)
+      return option::ARG_OK;
+    
+    if (msg) printError("Option '", option, "' requires a non-empty argument\n");
+    return option::ARG_ILLEGAL;
+  }
+  
+  static option::ArgStatus Numeric(const option::Option& option, bool msg)
+  {
+    char* endptr = 0;
+    if (option.arg != 0 && strtol(option.arg, &endptr, 10)){};
+    if (endptr != option.arg && *endptr == 0)
+      return option::ARG_OK;
+    
+    if (msg) printError("Option '", option, "' requires a numeric argument\n");
+    return option::ARG_ILLEGAL;
+  }
+};
+
 enum optionIndex {
   UNKNOWN,
   ACCEL,
@@ -41,25 +83,36 @@ const char usageText[] =
 "   by Samy Kamkar -- http://samy.pl -- code@samy.pl\n"
 "   modified by tekt -- https://t3kt.net\n";
 const option::Descriptor usage[] = {
-  {UNKNOWN, 0, "", "", option::Arg::None, usageText},
-  {ACCEL, ENABLE, "a", "accel", option::Arg::None, "--accel Enable accelerometer output"},
-  {ACCEL, DISABLE, "A", "noaccel", option::Arg::None, "--noaccel Disable accelerometer output"},
-  {GYRO, ENABLE, "g", "gyro", option::Arg::None, "--gyro Enable gyroscope output"},
-  {GYRO, DISABLE, "G", "nogyro", option::Arg::None, "--nogyro Disable gyroscope output"},
-  {ORIENT, ENABLE, "o", "orient", option::Arg::None, "--orient Enable orientation output"},
-  {ORIENT, DISABLE, "O", "noorient", option::Arg::None, "--noorient Disable orientation output"},
-  {POSE, ENABLE, "p", "pose", option::Arg::None, "--pose Enable pose output"},
-  {POSE, DISABLE, "P", "nopose", option::Arg::None, "--nopose Disable pose output"},
-  {EMG, ENABLE, "e", "emg", option::Arg::None, "--emg Enable EMG output"},
-  {EMG, DISABLE, "E", "noemg", option::Arg::None, "--noemg Disable EMG output"},
-  {RSSI, ENABLE, "r", "rssi", option::Arg::None, "--rssi Enable RSSI (signal strength) output"},
-  {RSSI, DISABLE, "R", "norssi", option::Arg::None, "--norssi Disable RSSI (signal strength) output"},
-  {SYNC, ENABLE, "s", "sync", option::Arg::None, "--emg Enable sync/unsync output"},
-  {SYNC, DISABLE, "S", "nosync", option::Arg::None, "--noemg Disable sync/unsync output"},
-  {CONSOLE, DISABLE, "C", "noconsole", option::Arg::None, "--noconsole Disable console value display"},
-  {HELP, 0, "", "help", option::Arg::None, "--help Print usage and exit."},
+  {UNKNOWN,     0,            "",   "",           Arg::Unknown,   usageText},
+  {ACCEL,       ENABLE,       "a",  "accel",      Arg::Optional,  "--accel Enable accelerometer output"},
+  {ACCEL,       DISABLE,      "A",  "noaccel",    Arg::None,      "--noaccel Disable accelerometer output"},
+  {GYRO,        ENABLE,       "g",  "gyro",       Arg::Optional,  "--gyro Enable gyroscope output"},
+  {GYRO,        DISABLE,      "G",  "nogyro",     Arg::None,      "--nogyro Disable gyroscope output"},
+  {ORIENT,      ENABLE,       "o",  "orient",     Arg::Optional,  "--orient Enable orientation output"},
+  {ORIENT,      DISABLE,      "O",  "noorient",   Arg::None,      "--noorient Disable orientation output"},
+  {POSE,        ENABLE,       "p",  "pose",       Arg::Optional,  "--pose Enable pose output"},
+  {POSE,        DISABLE,      "P",  "nopose",     Arg::None,      "--nopose Disable pose output"},
+  {EMG,         ENABLE,       "e",  "emg",        Arg::Optional,  "--emg Enable EMG output"},
+  {EMG,         DISABLE,      "E",  "noemg",      Arg::None,      "--noemg Disable EMG output"},
+  {RSSI,        ENABLE,       "r",  "rssi",       Arg::Optional,  "--rssi Enable RSSI (signal strength) output"},
+  {RSSI,        DISABLE,      "R",  "norssi",     Arg::None,      "--norssi Disable RSSI (signal strength) output"},
+  {SYNC,        ENABLE,       "s",  "sync",       Arg::Optional,  "--emg Enable sync/unsync output"},
+  {SYNC,        DISABLE,      "S",  "nosync",     Arg::None,      "--noemg Disable sync/unsync output"},
+  {CONSOLE,     DISABLE,      "C",  "noconsole",  Arg::None,      "--noconsole Disable console value display"},
+  {HELP,        0,            "",   "help",       Arg::None,      "--help Print usage and exit."},
   {0, 0, 0, 0, 0, 0},
 };
+
+static void setArg(bool *enabled, std::string* path, const option::Option& opt) {
+  if (opt.type() == DISABLE) {
+    *enabled = false;
+    *path = "";
+  } else {
+    *enabled = true;
+    if (opt.arg)
+      *path = opt.arg;
+  }
+}
 
 bool parseArgs(int argc, char **argv, Settings* settings) {
   argc-=(argc>0); argv+=(argc>0); // skip program name argv[0] if present
@@ -80,6 +133,13 @@ bool parseArgs(int argc, char **argv, Settings* settings) {
   settings->hostname = "127.0.0.1";
   settings->console = true;
   settings->rssi = false;
+  settings->accelPath = "/myo/accel";
+  settings->gyroPath = "/myo/gyro";
+  settings->orientationPath = "/myo/orientation";
+  settings->posePath = "/myo/pose";
+  settings->rssiPath = "/myo/rssi";
+  settings->emgPath = "/myo/emg";
+  settings->syncPath = "/myo/arm";
   
   if (options[ACCEL].count() ||
       options[GYRO].count() ||
@@ -105,28 +165,28 @@ bool parseArgs(int argc, char **argv, Settings* settings) {
   for (const auto& opt : options) {
     switch (opt.index()) {
       case ACCEL:
-        settings->accel = opt.type() == ENABLE;
+        setArg(&settings->accel, &settings->accelPath, opt);
         break;
       case GYRO:
-        settings->gyro = opt.type() == ENABLE;
+        setArg(&settings->gyro, &settings->gyroPath, opt);
         break;
       case ORIENT:
-        settings->orientation = opt.type() == ENABLE;
+        setArg(&settings->orientation, &settings->orientationPath, opt);
         break;
       case POSE:
-        settings->pose = opt.type() == ENABLE;
+        setArg(&settings->pose, &settings->posePath, opt);
         break;
       case EMG:
-        settings->emg = opt.type() == ENABLE;
+        setArg(&settings->emg, &settings->emgPath, opt);
         break;
       case SYNC:
-        settings->sync = opt.type() == ENABLE;
+        setArg(&settings->sync, &settings->syncPath, opt);
+        break;
+      case RSSI:
+        setArg(&settings->rssi, &settings->rssiPath, opt);
         break;
       case CONSOLE:
         settings->console = opt.type() == ENABLE;
-        break;
-      case RSSI:
-        settings->rssi = opt.type() == ENABLE;
         break;
       case UNKNOWN:
         std::cout << "Unknown option: " << std::string(opt.name, opt.namelen) << "\n\n";
@@ -158,7 +218,7 @@ int main(int argc, char** argv)
     if (!parseArgs(argc, argv, &settings))
       return 1;
     
-//    std::cout << settings;
+    std::cout << settings;
     
     std::cout << "Sending Myo OSC to " << settings.hostname << ":" << settings.port << "\n";
     
@@ -198,6 +258,9 @@ int main(int argc, char** argv)
       // In each iteration of our main loop, we run the Myo event loop for a set number of milliseconds.
       // In this case, we wish to update our display 20 times a second, so we run for 1000/20 milliseconds.
       hub.run(1000/20);
+      if (settings.rssi) {
+        myo->requestRssi();
+      }
       // After processing events, we call the print() member function we defined above to print out the values we've
       // obtained from any events that have occurred.
       collector.print();
