@@ -105,14 +105,14 @@ const option::Descriptor usage[] = {
   {0, 0, 0, 0, 0, 0},
 };
 
-static void setArg(bool *enabled, std::string* path, const option::Option& opt) {
+static void setArg(OutputType* type, const option::Option& opt) {
   if (opt.type() == DISABLE) {
-    *enabled = false;
-    *path = "";
+    type->enabled = false;
+    type->path = "";
   } else {
-    *enabled = true;
+    type->enabled = true;
     if (opt.arg)
-      *path = opt.arg;
+      type->path = opt.arg;
   }
 }
 
@@ -135,58 +135,36 @@ bool parseArgs(int argc, char **argv, Settings* settings) {
   settings->hostname = "127.0.0.1";
   settings->console = true;
   settings->logOsc = false;
-  settings->rssi = false;
-  settings->accelPath = "/myo/accel";
-  settings->gyroPath = "/myo/gyro";
-  settings->orientationPath = "/myo/orientation";
-  settings->posePath = "/myo/pose";
-  settings->rssiPath = "/myo/rssi";
-  settings->emgPath = "/myo/emg";
-  settings->syncPath = "/myo/arm";
-  
-  if (options[ACCEL].count() ||
-      options[GYRO].count() ||
-      options[ORIENT].count() ||
-      options[POSE].count() ||
-      options[EMG].count() ||
-      options[SYNC].count()) {
-    settings->accel = false;
-    settings->gyro = false;
-    settings->orientation = false;
-    settings->pose = false;
-    settings->emg = false;
-    settings->sync = false;
-  } else {
-    settings->accel = true;
-    settings->gyro = true;
-    settings->orientation = true;
-    settings->pose = true;
-    settings->emg = true;
-    settings->sync = true;
-  }
+  settings->accel = {false, "/myo/accel"};
+  settings->gyro = {false, "/myo/gyro"};
+  settings->orientation = {false, "/myo/orientation"};
+  settings->pose = {false, "/myo/pose"};
+  settings->emg = {false, "/myo/emg"};
+  settings->sync = {false, "/myo/arm"};
+  settings->rssi = {false, "/myo/rssi"};
   
   for (const auto& opt : options) {
     switch (opt.index()) {
       case ACCEL:
-        setArg(&settings->accel, &settings->accelPath, opt);
+        setArg(&settings->accel, opt);
         break;
       case GYRO:
-        setArg(&settings->gyro, &settings->gyroPath, opt);
+        setArg(&settings->gyro, opt);
         break;
       case ORIENT:
-        setArg(&settings->orientation, &settings->orientationPath, opt);
+        setArg(&settings->orientation, opt);
         break;
       case POSE:
-        setArg(&settings->pose, &settings->posePath, opt);
+        setArg(&settings->pose, opt);
         break;
       case EMG:
-        setArg(&settings->emg, &settings->emgPath, opt);
+        setArg(&settings->emg, opt);
         break;
       case SYNC:
-        setArg(&settings->sync, &settings->syncPath, opt);
+        setArg(&settings->sync, opt);
         break;
       case RSSI:
-        setArg(&settings->rssi, &settings->rssiPath, opt);
+        setArg(&settings->rssi, opt);
         break;
       case CONSOLE:
         settings->console = opt.type() == ENABLE;

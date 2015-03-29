@@ -17,18 +17,26 @@
 #include <cmath>
 #include <iomanip>
 
+std::ostream& operator<<(std::ostream& os, const OutputType& type) {
+  if (type)
+    os << type.path;
+  else
+    os << "(none)";
+  return os;
+}
+
 std::ostream& operator<<(std::ostream& os, const Settings& settings) {
   static const std::string none("(none)");
   return os << std::boolalpha << "Settings<\n"
   << "  hostname: " << settings.hostname << "\n"
   << "  port: " << settings.port << "\n"
-  << "  accel: " << (settings.accel ? settings.accelPath : none) << "\n"
-  << "  gyro: " << (settings.gyro ? settings.gyroPath : none) << "\n"
-  << "  orientation: " << (settings.orientation ? settings.orientationPath : none) << "\n"
-  << "  pose: " << (settings.pose ? settings.posePath : none) << "\n"
-  << "  emg: " << (settings.emg ? settings.emgPath : none) << "\n"
-  << "  sync: " << (settings.sync ? settings.syncPath : none) << "\n"
-  << "  rssi: " << (settings.rssi ? settings.rssiPath : none) << "\n"
+  << "  accel: " << settings.accel << "\n"
+  << "  gyro: " << settings.gyro << "\n"
+  << "  orientation: " << settings.orientation << "\n"
+  << "  pose: " << settings.pose << "\n"
+  << "  emg: " << settings.emg << "\n"
+  << "  sync: " << settings.sync << "\n"
+  << "  rssi: " << settings.rssi << "\n"
   << "  console: " << settings.console << "\n"
   << ">\n";
 }
@@ -153,7 +161,7 @@ void MyoOscGenerator::onAccelerometerData(myo::Myo* myo, uint64_t timestamp, con
 {
   if (!settings.accel)
     return;
-  sendMessage(settings.accelPath, accel);
+  sendMessage(settings.accel.path, accel);
 }
 
 // units of deg/s
@@ -161,7 +169,7 @@ void MyoOscGenerator::onGyroscopeData(myo::Myo* myo, uint64_t timestamp, const m
 {
   if (!settings.gyro)
     return;
-  sendMessage(settings.gyroPath, gyro);
+  sendMessage(settings.gyro.path, gyro);
 }
 
 // onOrientationData() is called whenever the Myo device provides its current orientation, which is represented
@@ -181,7 +189,7 @@ void MyoOscGenerator::onOrientationData(myo::Myo* myo, uint64_t timestamp, const
   float yaw = atan2(2.0f * (quat.w() * quat.z() + quat.x() * quat.y()),
                     1.0f - 2.0f * (quat.y() * quat.y() + quat.z() * quat.z()));
   
-  sendMessage(settings.orientationPath, quat, myo::Vector3<float>(roll, pitch, yaw));
+  sendMessage(settings.orientation.path, quat, myo::Vector3<float>(roll, pitch, yaw));
   
   // Convert the floating point angles in radians to a scale from 0 to 20.
   roll_w = static_cast<int>((roll + (float)M_PI)/(M_PI * 2.0f) * 18);
@@ -197,7 +205,7 @@ void MyoOscGenerator::onPose(myo::Myo* myo, uint64_t timestamp, myo::Pose pose)
     return;
   currentPose = pose;
   
-  sendMessage(settings.posePath, currentPose.toString().c_str());
+  sendMessage(settings.pose.path, currentPose.toString().c_str());
   
   // Vibrate the Myo whenever we've detected that the user has made a fist.
   if (pose == myo::Pose::fist) {
@@ -208,13 +216,13 @@ void MyoOscGenerator::onPose(myo::Myo* myo, uint64_t timestamp, myo::Pose pose)
 void MyoOscGenerator::onRssi(myo::Myo *myo, uint64_t timestamp, int8_t rssi) {
   if (!settings.rssi)
     return;
-  sendMessage(settings.rssiPath, rssi);
+  sendMessage(settings.rssi.path, rssi);
 }
 
 void MyoOscGenerator::onEmgData(myo::Myo* myo, uint64_t timestamp, const int8_t* emg) {
   if (!settings.emg)
     return;
-  sendMessage(settings.emgPath, emg, 8);
+  sendMessage(settings.emg.path, emg, 8);
 }
 
 // onArmSync() is called whenever Myo has recognized a setup gesture after someone has put it on their
@@ -226,7 +234,7 @@ void MyoOscGenerator::onArmSync(myo::Myo* myo, uint64_t timestamp, myo::Arm arm,
   onArm = true;
   whichArm = arm;
   
-  sendMessage(settings.syncPath, (whichArm == myo::armLeft ? "L" : "R"));
+  sendMessage(settings.sync.path, (whichArm == myo::armLeft ? "L" : "R"));
 }
 
 // onArmUnsync() is called whenever Myo has detected that it was moved from a stable position on a person's arm after
@@ -237,7 +245,7 @@ void MyoOscGenerator::onArmUnsync(myo::Myo* myo, uint64_t timestamp)
   if (!settings.sync)
     return;
   onArm = false;
-  sendMessage(settings.syncPath, "-");
+  sendMessage(settings.sync.path, "-");
 }
 
 // We define this function to print the current values that were updated by the on...() functions above.

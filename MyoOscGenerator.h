@@ -28,24 +28,28 @@
 
 #define OUTPUT_BUFFER_SIZE 1024
 
+struct OutputType {
+  bool enabled;
+  std::string path;
+  
+  operator bool() const {
+    return enabled;
+  }
+};
+
+std::ostream& operator<<(std::ostream& os, const OutputType& type);
+
 struct Settings {
-  bool accel;
-  bool gyro;
-  bool orientation;
-  bool pose;
-  bool emg;
-  bool sync;
-  bool rssi;
+  OutputType accel;
+  OutputType gyro;
+  OutputType orientation;
+  OutputType pose;
+  OutputType emg;
+  OutputType sync;
+  OutputType rssi;
+  
   bool console;
   bool logOsc;
-  
-  std::string accelPath;
-  std::string gyroPath;
-  std::string orientationPath;
-  std::string posePath;
-  std::string emgPath;
-  std::string syncPath;
-  std::string rssiPath;
   
   std::string hostname;
   int port;
