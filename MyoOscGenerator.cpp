@@ -33,6 +33,96 @@ std::ostream& operator<<(std::ostream& os, const Settings& settings) {
   << ">\n";
 }
 
+static void logPath(const std::string& path) {
+  std::cout << std::setw(20) << std::setfill(' ') << std::left << (path + ":");
+}
+
+static void logVector(const myo::Vector3<float>& vec) {
+  std::cout << "  " << std::setw(10) << std::right << std::setprecision(2) << vec.x();
+  std::cout << "  " << std::setw(10) << std::right << std::setprecision(2) << vec.y();
+  std::cout << "  " << std::setw(10) << std::right << std::setprecision(2) << vec.z();
+}
+
+static void logQuaterion(const myo::Quaternion<float>& quat) {
+  std::cout << "  " << std::setw(10) << std::right << std::setprecision(2) << quat.x();
+  std::cout << "  " << std::setw(10) << std::right << std::setprecision(2) << quat.y();
+  std::cout << "  " << std::setw(10) << std::right << std::setprecision(2) << quat.z();
+  std::cout << "  " << std::setw(10) << std::right << std::setprecision(2) << quat.w();
+}
+
+static void logVal(int8_t val) {
+  std::cout << "  " << std::setw(10) << std::right << (int)val;
+}
+
+void MyoOscGenerator::sendMessage(const std::string &path, int8_t val) {
+  send(beginMessage(path)
+       << val << osc::EndMessage);
+  if (settings.logOsc) {
+    logPath(path);
+    logVal(val);
+    std::cout << std::endl;
+  }
+}
+
+void MyoOscGenerator::sendMessage(const std::string &path, const int8_t* vals, int count) {
+  auto p = beginMessage(path);
+  for (int i = 0; i < count; ++i) {
+    p << vals[i];
+  }
+  send(p << osc::EndMessage);
+  if (settings.logOsc) {
+    logPath(path);
+    for (int i = 0; i < count; ++i) {
+      logVal((int)vals[i]);
+    }
+    std::cout << std::endl;
+  }
+}
+
+void MyoOscGenerator::sendMessage(const std::string &path, const char* val) {
+  send(beginMessage(path)
+       << val << osc::EndMessage);
+  if (settings.logOsc) {
+    logPath(path);
+    std::cout << "  " << std::right << val;
+    std::cout << std::endl;
+  }
+}
+
+void MyoOscGenerator::sendMessage(const std::string& path, const myo::Vector3<float>& vec) {
+  send(beginMessage(path)
+       << vec.x() << vec.y() << vec.z() << osc::EndMessage);
+  if (settings.logOsc) {
+    logPath(path);
+    logVector(vec);
+    std::cout << std::endl;
+  }
+}
+
+void MyoOscGenerator::sendMessage(const std::string& path, const myo::Vector3<float>& vec1, const myo::Vector3<float>& vec2) {
+  send(beginMessage(path)
+       << vec1.x() << vec1.y() << vec1.z()
+       << vec2.x() << vec2.y() << vec2.z() << osc::EndMessage);
+  if (settings.logOsc) {
+    logPath(path);
+    logVector(vec1);
+    logVector(vec2);
+    std::cout << std::endl;
+  }
+}
+
+void MyoOscGenerator::sendMessage(const std::string& path, const myo::Quaternion<float>& quat1, const myo::Vector3<float>& vec2) {
+  send(beginMessage(path)
+       << quat1.x() << quat1.y() << quat1.z() << quat1.w()
+       << vec2.x() << vec2.y() << vec2.z() << osc::EndMessage);
+  if (settings.logOsc) {
+    logPath(path);
+    logQuaterion(quat1);
+    logVector(vec2);
+    std::cout << std::endl;
+  }
+}
+
 MyoOscGenerator::MyoOscGenerator(Settings settings)
 : settings(settings), onArm(false), roll_w(0), pitch_w(0), yaw_w(0), currentPose()
 {
@@ -53,6 +143,9 @@ osc::OutboundPacketStream MyoOscGenerator::beginMessage(const std::string& messa
 
 void MyoOscGenerator::send(const osc::OutboundPacketStream& p) {
   transmitSocket->Send(p.Data(), p.Size());
+//  if (settings.logOsc) {
+//    std::cout << "  " << p.Data() << std::endl;
+//  }
 }
 
 // units of g
@@ -60,12 +153,7 @@ void MyoOscGenerator::onAccelerometerData(myo::Myo* myo, uint64_t timestamp, con
 {
   if (!settings.accel)
     return;
-  a_x = accel.x();
-  a_y = accel.y();
-  a_z = accel.z();
-  
-  send(beginMessage(settings.accelPath)
-       << accel.x() << accel.y() << accel.z() << osc::EndMessage);
+  sendMessage(settings.accelPath, accel);
 }
 
 // units of deg/s
@@ -73,12 +161,7 @@ void MyoOscGenerator::onGyroscopeData(myo::Myo* myo, uint64_t timestamp, const m
 {
   if (!settings.gyro)
     return;
-  g_x = gyro.x();
-  g_y = gyro.y();
-  g_z = gyro.z();
-  
-  send(beginMessage(settings.gyroPath)
-       << g_x << g_y << g_z << osc::EndMessage);
+  sendMessage(settings.gyroPath, gyro);
 }
 
 // onOrientationData() is called whenever the Myo device provides its current orientation, which is represented
@@ -98,9 +181,7 @@ void MyoOscGenerator::onOrientationData(myo::Myo* myo, uint64_t timestamp, const
   float yaw = atan2(2.0f * (quat.w() * quat.z() + quat.x() * quat.y()),
                     1.0f - 2.0f * (quat.y() * quat.y() + quat.z() * quat.z()));
   
-  send(beginMessage(settings.orientationPath)
-       << quat.x() << quat.y() << quat.z() << quat.w()
-       << roll << pitch << yaw << osc::EndMessage);
+  sendMessage(settings.orientationPath, quat, myo::Vector3<float>(roll, pitch, yaw));
   
   // Convert the floating point angles in radians to a scale from 0 to 20.
   roll_w = static_cast<int>((roll + (float)M_PI)/(M_PI * 2.0f) * 18);
@@ -128,18 +209,13 @@ void MyoOscGenerator::onPose(myo::Myo* myo, uint64_t timestamp, myo::Pose pose)
 void MyoOscGenerator::onRssi(myo::Myo *myo, uint64_t timestamp, int8_t rssi) {
   if (!settings.rssi)
     return;
-  send(beginMessage(settings.rssiPath)
-       << rssi
-       << osc::EndMessage);
+  sendMessage(settings.rssiPath, rssi);
 }
 
 void MyoOscGenerator::onEmgData(myo::Myo* myo, uint64_t timestamp, const int8_t* emg) {
   if (!settings.emg)
     return;
-  send(beginMessage(settings.emgPath)
-       << emg[0] << emg[1] << emg[2] << emg[3]
-       << emg[4] << emg[5] << emg[6] << emg[7]
-       << osc::EndMessage);
+  sendMessage(settings.emgPath, emg, 8);
 }
 
 // onArmSync() is called whenever Myo has recognized a setup gesture after someone has put it on their
@@ -151,8 +227,7 @@ void MyoOscGenerator::onArmSync(myo::Myo* myo, uint64_t timestamp, myo::Arm arm,
   onArm = true;
   whichArm = arm;
   
-  send(beginMessage(settings.syncPath)
-       << (whichArm == myo::armLeft ? "L" : "R") << osc::EndMessage);
+  sendMessage(settings.syncPath, (whichArm == myo::armLeft ? "L" : "R"));
 }
 
 // onArmUnsync() is called whenever Myo has detected that it was moved from a stable position on a person's arm after
@@ -163,8 +238,7 @@ void MyoOscGenerator::onArmUnsync(myo::Myo* myo, uint64_t timestamp)
   if (!settings.sync)
     return;
   onArm = false;
-  send(beginMessage(settings.syncPath)
-       << "-" << osc::EndMessage);
+  sendMessage(settings.syncPath, "-");
 }
 
 // We define this function to print the current values that were updated by the on...() functions above.

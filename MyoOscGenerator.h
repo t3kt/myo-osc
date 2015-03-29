@@ -37,6 +37,7 @@ struct Settings {
   bool sync;
   bool rssi;
   bool console;
+  bool logOsc;
   
   std::string accelPath;
   std::string gyroPath;
@@ -94,6 +95,13 @@ public:
   osc::OutboundPacketStream beginMessage(const std::string& message);
   
   void send(const osc::OutboundPacketStream& p);
+  
+  void sendMessage(const std::string& path, int8_t val);
+  void sendMessage(const std::string& path, const int8_t* vals, int count);
+  void sendMessage(const std::string& path, const char* val);
+  void sendMessage(const std::string& path, const myo::Vector3<float>& vec);
+  void sendMessage(const std::string& path, const myo::Vector3<float>& vec1, const myo::Vector3<float>& vec2);
+  void sendMessage(const std::string& path, const myo::Quaternion<float>& quat1, const myo::Vector3<float>& vec2);
   
   // We define this function to print the current values that were updated by the on...() functions above.
   void print();

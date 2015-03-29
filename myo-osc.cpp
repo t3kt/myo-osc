@@ -72,6 +72,7 @@ enum optionIndex {
   SYNC,
   RSSI,
   CONSOLE,
+  LOGOSC,
   HELP
 };
 enum OptionType {DISABLE, ENABLE, OTHER};
@@ -99,6 +100,7 @@ const option::Descriptor usage[] = {
   {SYNC,        ENABLE,       "s",  "sync",       Arg::Optional,  "--emg Enable sync/unsync output"},
   {SYNC,        DISABLE,      "S",  "nosync",     Arg::None,      "--noemg Disable sync/unsync output"},
   {CONSOLE,     DISABLE,      "C",  "noconsole",  Arg::None,      "--noconsole Disable console value display"},
+  {LOGOSC,      ENABLE,       "l",  "log",        Arg::None,      "--log Enable OSC debug logging."},
   {HELP,        0,            "",   "help",       Arg::None,      "--help Print usage and exit."},
   {0, 0, 0, 0, 0, 0},
 };
@@ -132,6 +134,7 @@ bool parseArgs(int argc, char **argv, Settings* settings) {
   settings->port = 7777;
   settings->hostname = "127.0.0.1";
   settings->console = true;
+  settings->logOsc = false;
   settings->rssi = false;
   settings->accelPath = "/myo/accel";
   settings->gyroPath = "/myo/gyro";
@@ -187,6 +190,9 @@ bool parseArgs(int argc, char **argv, Settings* settings) {
         break;
       case CONSOLE:
         settings->console = opt.type() == ENABLE;
+        break;
+      case LOGOSC:
+        settings->logOsc = opt.type() == ENABLE;
         break;
       case UNKNOWN:
         std::cout << "Unknown option: " << std::string(opt.name, opt.namelen) << "\n\n";
