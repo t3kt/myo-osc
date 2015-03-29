@@ -21,6 +21,7 @@
 #include <iomanip>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 // The only file that needs to be included to use the Myo C++ SDK is myo.hpp.
 #include <myo/myo.hpp>
@@ -28,6 +29,8 @@
 // add oscpack
 #include "osc/OscOutboundPacketStream.h"
 #include "ip/UdpSocket.h"
+
+#include "optionparser.h"
 
 #define OUTPUT_BUFFER_SIZE 1024
 
@@ -37,13 +40,24 @@ struct Settings {
   bool orientation;
   bool pose;
   bool emg;
-  bool onarm;
-  bool onarmlost;
+  bool sync;
   bool console;
   
   std::string hostname;
   int port;
 };
+
+std::ostream& operator<<(std::ostream& os, const Settings& settings) {
+  return os << "Settings<\n"
+  << "  accel: " << settings.accel << "\n"
+  << "  gyro: " << settings.gyro << "\n"
+  << "  orientation: " << settings.orientation << "\n"
+  << "  pose: " << settings.pose << "\n"
+  << "  emg: " << settings.emg << "\n"
+  << "  sync: " << settings.sync << "\n"
+  << "  console: " << settings.console << "\n"
+  << ">\n";
+}
 
 // Classes that inherit from myo::DeviceListener can be used to receive events from Myo devices. DeviceListener
 // provides several virtual functions for handling different kinds of events. If you do not override an event, the
@@ -66,17 +80,21 @@ public:
   // units of g
   void onAccelerometerData(myo::Myo* myo, uint64_t timestamp, const myo::Vector3<float>& accel) override
   {
+    if (!settings.accel)
+      return;
     a_x = accel.x();
     a_y = accel.y();
     a_z = accel.z();
     
     send(beginMessage("/myo/accel")
-         << a_x << a_y << a_z << osc::EndMessage);
+         << accel.x() << accel.y() << accel.z() << osc::EndMessage);
   }
   
   // units of deg/s
   void onGyroscopeData(myo::Myo* myo, uint64_t timestamp, const myo::Vector3<float>& gyro) override
   {
+    if (!settings.gyro)
+      return;
     g_x = gyro.x();
     g_y = gyro.y();
     g_z = gyro.z();
@@ -89,6 +107,8 @@ public:
   // as a unit quaternion.
   void onOrientationData(myo::Myo* myo, uint64_t timestamp, const myo::Quaternion<float>& quat) override
   {
+    if (!settings.orientation)
+      return;
     using std::atan2;
     using std::asin;
     using std::sqrt;
@@ -114,6 +134,8 @@ public:
   // making a fist, or not making a fist anymore.
   void onPose(myo::Myo* myo, uint64_t timestamp, myo::Pose pose) override
   {
+    if (!settings.pose)
+      return;
     currentPose = pose;
     
     send(beginMessage("/myo/pose")
@@ -126,6 +148,8 @@ public:
   }
   
   void onEmgData(myo::Myo* myo, uint64_t timestamp, const int8_t* emg) override {
+    if (!settings.emg)
+      return;
     send(beginMessage("/myo/emg")
       << emg[0] << emg[1] << emg[2] << emg[3]
       << emg[4] << emg[5] << emg[6] << emg[7]
@@ -136,6 +160,8 @@ public:
   // arm. This lets Myo know which arm it's on and which way it's facing.
   void onArmSync(myo::Myo* myo, uint64_t timestamp, myo::Arm arm, myo::XDirection xDirection) override
   {
+    if (!settings.sync)
+      return;
     onArm = true;
     whichArm = arm;
     
@@ -148,6 +174,8 @@ public:
   // when Myo is moved around on the arm.
   void onArmUnsync(myo::Myo* myo, uint64_t timestamp) override
   {
+    if (!settings.sync)
+      return;
     onArm = false;
     send(beginMessage("/myo/onarmlost")
          << osc::EndMessage);
@@ -211,48 +239,150 @@ public:
   Settings settings;
 };
 
+enum optionIndex {
+  UNKNOWN,
+  ACCEL,
+  GYRO,
+  ORIENT,
+  POSE,
+  EMG,
+  SYNC,
+  HELP
+};
+enum OptionType {DISABLE, ENABLE, OTHER};
+const option::Descriptor usage[] = {
+  {UNKNOWN, 0, "", "", option::Arg::None, "USAGE: myo-osc [options] <host> <port>\n\n"},
+  {ACCEL, ENABLE, "a", "accel", option::Arg::None, "--accel Enable accelerometer output"},
+  {ACCEL, DISABLE, "A", "noaccel", option::Arg::None, "--noaccel Disable accelerometer output"},
+  {GYRO, ENABLE, "g", "gyro", option::Arg::None, "--gyro Enable gyroscope output"},
+  {GYRO, DISABLE, "G", "nogyro", option::Arg::None, "--nogyro Disable gyroscope output"},
+  {ORIENT, ENABLE, "o", "orient", option::Arg::None, "--orient Enable orientation output"},
+  {ORIENT, DISABLE, "O", "noorient", option::Arg::None, "--noorient Disable orientation output"},
+  {POSE, ENABLE, "p", "pose", option::Arg::None, "--pose Enable pose output"},
+  {POSE, DISABLE, "P", "nopose", option::Arg::None, "--nopose Disable pose output"},
+  {EMG, ENABLE, "e", "emg", option::Arg::None, "--emg Enable EMG output"},
+  {EMG, DISABLE, "E", "noemg", option::Arg::None, "--noemg Disable EMG output"},
+  {SYNC, ENABLE, "s", "sync", option::Arg::None, "--emg Enable sync/unsync output"},
+  {SYNC, DISABLE, "S", "nosync", option::Arg::None, "--noemg Disable sync/unsync output"},
+  {HELP, 0, "", "help", option::Arg::None, "--help Print usage and exit."},
+  {0, 0, 0, 0, 0, 0},
+};
+
+bool parseArgs(int argc, char **argv, Settings* settings) {
+  argc-=(argc>0); argv+=(argc>0); // skip program name argv[0] if present
+  option::Stats  stats(usage, argc, argv);
+  std::vector<option::Option> options(stats.options_max);
+  std::vector<option::Option> buffer(stats.buffer_max);
+  option::Parser parse(usage, argc, argv, options.data(), buffer.data());
+  
+  if (parse.error())
+    return false;
+  
+  if (options[HELP] && argc == 0) {
+    option::printUsage(std::cout, usage);
+    exit(0);
+  }
+  
+  settings->port = 7777;
+  settings->hostname = "127.0.0.1";
+  settings->console = true;
+  
+  if (options[ACCEL].count() ||
+      options[GYRO].count() ||
+      options[ORIENT].count() ||
+      options[POSE].count() ||
+      options[EMG].count() ||
+      options[SYNC].count()) {
+    settings->accel = false;
+    settings->gyro = false;
+    settings->orientation = false;
+    settings->pose = false;
+    settings->emg = false;
+    settings->sync = false;
+  } else {
+    settings->accel = true;
+    settings->gyro = true;
+    settings->orientation = true;
+    settings->pose = true;
+    settings->emg = true;
+    settings->sync = true;
+  }
+  
+  for (const auto& opt : options) {
+    switch (opt.index()) {
+      case ACCEL:
+        settings->accel = opt.type() == ENABLE;
+        break;
+      case GYRO:
+        settings->gyro = opt.type() == ENABLE;
+        break;
+      case ORIENT:
+        settings->orientation = opt.type() == ENABLE;
+        break;
+      case POSE:
+        settings->pose = opt.type() == ENABLE;
+        break;
+      case EMG:
+        settings->emg = opt.type() == ENABLE;
+        break;
+      case SYNC:
+        settings->sync = opt.type() == ENABLE;
+        break;
+      case UNKNOWN:
+        std::cout << "Unknown option: " << std::string(opt.name, opt.namelen) << "\n";
+        return false;
+      default:
+        break;
+    }
+  }
+  if (parse.nonOptionsCount() == 2) {
+    settings->hostname = parse.nonOption(0);
+    settings->port = atoi(parse.nonOption(1));
+  } else if (parse.nonOptionsCount() == 1) {
+    settings->port = atoi(parse.nonOption(0));
+  } else {
+    std::cout << "strange number of non-option arguments: " << parse.nonOptionsCount() << "\n";
+    return false;
+  }
+  return true;
+}
+
 int main(int argc, char** argv)
 {
   Settings settings;
-  settings.accel = true;
-  settings.gyro = true;
-  settings.orientation = true;
-  settings.pose = true;
-  settings.emg = true;
-  settings.onarm = true;
-  settings.onarmlost = true;
-  settings.console = true;
-  settings.port = 7777;
-  settings.hostname = "127.0.0.1";
   // We catch any exceptions that might occur below -- see the catch statement for more details.
   try
   {
-    if (argc != 3 && argc != 2 && argc != 1)
-    {
-      std::cout << "\nusage: " << argv[0] << " [IP address] <port>\n\n" <<
-      "Myo-OSC sends OSC output over UDP from the input of a Thalmic Myo armband.\n" <<
-      "IP address defaults to 127.0.0.1/localhost\n\n" <<
-      "by Samy Kamkar -- http://samy.pl -- code@samy.pl\n";
-      exit(0);
-    }
+//    if (argc != 3 && argc != 2 && argc != 1)
+//    {
+//      std::cout << "\nusage: " << argv[0] << " [IP address] <port>\n\n" <<
+//      "Myo-OSC sends OSC output over UDP from the input of a Thalmic Myo armband.\n" <<
+//      "IP address defaults to 127.0.0.1/localhost\n\n" <<
+//      "by Samy Kamkar -- http://samy.pl -- code@samy.pl\n";
+//      exit(0);
+//    }
+    if (!parseArgs(argc, argv, &settings))
+      return 1;
     
-    if (argc == 1)
-    {
-    }
-    else if (argc == 2)
-    {
-      settings.port = atoi(argv[1]);
-    }
-    else if (argc == 3)
-    {
-      settings.hostname = argv[1];
-      settings.port = atoi(argv[2]);
-    }
-    else
-    {
-      std::cout << "well this awkward -- weird argc: " << argc << "\n";
-      exit(0);
-    }
+    std::cout << settings;
+    
+//    if (argc == 1)
+//    {
+//    }
+//    else if (argc == 2)
+//    {
+//      settings.port = atoi(argv[1]);
+//    }
+//    else if (argc == 3)
+//    {
+//      settings.hostname = argv[1];
+//      settings.port = atoi(argv[2]);
+//    }
+//    else
+//    {
+//      std::cout << "well this awkward -- weird argc: " << argc << "\n";
+//      exit(0);
+//    }
     std::cout << "Sending Myo OSC to " << settings.hostname << ":" << settings.port << "\n";
     
     
