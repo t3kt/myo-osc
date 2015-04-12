@@ -16,6 +16,7 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <iomanip>
+#include <fstream>
 
 static bool readOutputTypeJson(const picojson::value& obj, OutputType* out) {
   if (obj.is<picojson::null>()) {
@@ -97,7 +98,16 @@ bool Settings::readJson(std::istream &input, Settings* settings) {
       !readStringJson(obj.get("host"), &settings->hostname) ||
       !readIntJson(obj.get("port"), &settings->port))
     return false;
-  return false;
+  return true;
+}
+
+bool Settings::readJsonFile(const char* filename, Settings* settings) {
+  std::ifstream filein(filename);
+  if (filein.bad())
+    return false;
+  bool ok = readJson(filein, settings);
+  filein.close();
+  return ok;
 }
 
 std::ostream& operator<<(std::ostream& os, const OutputType& type) {

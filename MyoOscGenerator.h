@@ -56,6 +56,7 @@ struct Settings {
   int port;
   
   static bool readJson(std::istream& input, Settings* settings);
+  static bool readJsonFile(const char* filename, Settings* settings);
 };
 
 std::ostream& operator<<(std::ostream& os, const Settings& settings);

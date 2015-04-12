@@ -64,6 +64,7 @@ struct Arg : public option::Arg {
 
 enum optionIndex {
   UNKNOWN,
+  CONFIG,
   ACCEL,
   GYRO,
   ORIENT,
@@ -86,6 +87,7 @@ const char usageText[] =
 "   modified by tekt -- https://t3kt.net\n";
 const option::Descriptor usage[] = {
   {UNKNOWN,     0,            "",   "",           Arg::Unknown,   usageText},
+  {CONFIG,      0,            "c",  "config",     Arg::Required,  "--config path/to/config.json"},
   {ACCEL,       ENABLE,       "a",  "accel",      Arg::Optional,  "--accel Enable accelerometer output"},
   {ACCEL,       DISABLE,      "A",  "noaccel",    Arg::None,      "--noaccel Disable accelerometer output"},
   {GYRO,        ENABLE,       "g",  "gyro",       Arg::Optional,  "--gyro Enable gyroscope output"},
@@ -174,6 +176,12 @@ bool parseArgs(int argc, char **argv, Settings* settings) {
       case LOGOSC:
         settings->logOsc = opt.type() == ENABLE;
         break;
+      case CONFIG:
+        if (!Settings::readJsonFile(opt.arg, settings)) {
+          std::cout << "Error reading config json" << std::endl;
+          return false;
+        }
+        break;
       case UNKNOWN:
         std::cout << "Unknown option: " << std::string(opt.name, opt.namelen) << "\n\n";
         option::printUsage(std::cout, usage);
@@ -187,7 +195,7 @@ bool parseArgs(int argc, char **argv, Settings* settings) {
     settings->port = atoi(parse.nonOption(1));
   } else if (parse.nonOptionsCount() == 1) {
     settings->port = atoi(parse.nonOption(0));
-  } else {
+  } else if (parse.nonOptionsCount() != 0) {
     std::cout << "strange number of non-option arguments: " << parse.nonOptionsCount() << "\n\n";
     option::printUsage(std::cout, usage);
     return false;
