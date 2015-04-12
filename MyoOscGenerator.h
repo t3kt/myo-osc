@@ -10,14 +10,14 @@
 // Copyright (C) 2013-2014 Thalmic Labs Inc.
 // Distributed under the Myo SDK license agreement. See LICENSE.txt for details.
 
+#ifndef __MYO_OSC_GENERATOR_H__
+
 // stop oscpack sprintf warnings
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#include <iostream>
 #include <string>
-#include <vector>
 
 // The only file that needs to be included to use the Myo C++ SDK is myo.hpp.
 #include <myo/myo.hpp>
@@ -26,40 +26,9 @@
 #include "osc/OscOutboundPacketStream.h"
 #include "ip/UdpSocket.h"
 
-#include "picojson.h"
-
 #define OUTPUT_BUFFER_SIZE 1024
 
-struct OutputType {
-  bool enabled;
-  std::string path;
-  
-  operator bool() const { return enabled; }
-};
-
-std::ostream& operator<<(std::ostream& os, const OutputType& type);
-
-struct Settings {
-  OutputType accel;
-  OutputType gyro;
-  OutputType orientation;
-  OutputType orientationQuat;
-  OutputType pose;
-  OutputType emg;
-  OutputType sync;
-  OutputType rssi;
-  
-  bool console;
-  bool logOsc;
-  
-  std::string hostname;
-  int port;
-  
-  static bool readJson(std::istream& input, Settings* settings);
-  static bool readJsonFile(const char* filename, Settings* settings);
-};
-
-std::ostream& operator<<(std::ostream& os, const Settings& settings);
+#include "MyoOscSettings.h"
 
 // Classes that inherit from myo::DeviceListener can be used to receive events from Myo devices. DeviceListener
 // provides several virtual functions for handling different kinds of events. If you do not override an event, the
@@ -104,14 +73,16 @@ public:
   
   void send(const osc::OutboundPacketStream& p);
   
-  void sendMessage(const std::string& path, int8_t val);
-  void sendMessage(const std::string& path, const int8_t* vals, int count);
-  void sendMessage(const std::string& path, const char* val);
-  void sendMessage(const std::string& path, const myo::Vector3<float>& vec);
-  void sendMessage(const std::string& path, const myo::Vector3<float>& vec1, const myo::Vector3<float>& vec2);
-  void sendMessage(const std::string& path, const myo::Quaternion<float>& quat);
+  void sendMessage(const OutputType& type, int8_t val);
+  void sendMessage(const OutputType& type, const int8_t* vals, int count);
+  void sendMessage(const OutputType& type, const char* val);
+  void sendMessage(const OutputType& type, myo::Vector3<float> vec);
+  void sendMessage(const OutputType& type, myo::Vector3<float> vec1, myo::Vector3<float> vec2);
+  void sendMessage(const OutputType& type, myo::Quaternion<float> quat);
   
   char buffer[OUTPUT_BUFFER_SIZE];
   UdpTransmitSocket* transmitSocket;
   Settings settings;
 };
+
+#endif // __MYO_OSC_GENERATOR_H__

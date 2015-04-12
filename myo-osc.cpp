@@ -138,14 +138,14 @@ bool parseArgs(int argc, char **argv, Settings* settings) {
   settings->port = 7777;
   settings->hostname = "127.0.0.1";
   settings->logOsc = false;
-  settings->accel = {false, "/myo/accel"};
-  settings->gyro = {false, "/myo/gyro"};
-  settings->orientation = {false, "/myo/orientation"};
-  settings->orientationQuat = {false, "/myo/orientationquat"};
-  settings->pose = {false, "/myo/pose"};
-  settings->emg = {false, "/myo/emg"};
-  settings->sync = {false, "/myo/arm"};
-  settings->rssi = {false, "/myo/rssi"};
+  settings->accel = OutputType(false, "/myo/accel");
+  settings->gyro = OutputType(false, "/myo/gyro");
+  settings->orientation = OutputType(false, "/myo/orientation");
+  settings->orientationQuat = OutputType(false, "/myo/orientationquat");
+  settings->pose = OutputType(false, "/myo/pose");
+  settings->emg = OutputType(false, "/myo/emg");
+  settings->sync = OutputType(false, "/myo/arm");
+  settings->rssi = OutputType(false, "/myo/rssi");
   
   for (const auto& opt : options) {
     switch (opt.index()) {

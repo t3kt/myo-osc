@@ -15,6 +15,7 @@
 		2E43743C19885228006D0623 /* OscPrintReceivedElements.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E43743819885228006D0623 /* OscPrintReceivedElements.cpp */; };
 		2E43743D19885228006D0623 /* OscReceivedElements.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E43743919885228006D0623 /* OscReceivedElements.cpp */; };
 		2E43743E19885228006D0623 /* OscTypes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E43743A19885228006D0623 /* OscTypes.cpp */; };
+		327B67D91ADAF47E00763D77 /* MyoOscSettings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 327B67D71ADAF47E00763D77 /* MyoOscSettings.cpp */; };
 		32AB9A071AC7816A0084DE43 /* MyoOscGenerator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 32AB9A051AC7816A0084DE43 /* MyoOscGenerator.cpp */; };
 		4D04ADE519266DE6006E1C84 /* myo-osc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4D04ADE419266DE6006E1C84 /* myo-osc.cpp */; };
 		54B3C77019E5C6F4009B3EEC /* myo.framework in Copy Files */ = {isa = PBXBuildFile; fileRef = 2E05E85219D3621D00953A39 /* myo.framework */; };
@@ -52,6 +53,8 @@
 		327B67D21AD9E76400763D77 /* OscReceivedElements.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = OscReceivedElements.h; path = osc/OscReceivedElements.h; sourceTree = "<group>"; };
 		327B67D31AD9E76400763D77 /* OscTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = OscTypes.h; path = osc/OscTypes.h; sourceTree = "<group>"; };
 		327B67D41AD9EBBF00763D77 /* picojson.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = picojson.h; path = libs/picojson.h; sourceTree = "<group>"; };
+		327B67D71ADAF47E00763D77 /* MyoOscSettings.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MyoOscSettings.cpp; sourceTree = SOURCE_ROOT; };
+		327B67D81ADAF47E00763D77 /* MyoOscSettings.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MyoOscSettings.h; sourceTree = SOURCE_ROOT; };
 		32AB9A001AC76B0C0084DE43 /* optionparser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = optionparser.h; sourceTree = SOURCE_ROOT; };
 		32AB9A051AC7816A0084DE43 /* MyoOscGenerator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MyoOscGenerator.cpp; sourceTree = SOURCE_ROOT; };
 		32AB9A061AC7816A0084DE43 /* MyoOscGenerator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MyoOscGenerator.h; sourceTree = SOURCE_ROOT; };
@@ -116,6 +119,8 @@
 		4D1F5A97192655EE002845BB /* myo-osc */ = {
 			isa = PBXGroup;
 			children = (
+				327B67D71ADAF47E00763D77 /* MyoOscSettings.cpp */,
+				327B67D81ADAF47E00763D77 /* MyoOscSettings.h */,
 				32AB9A051AC7816A0084DE43 /* MyoOscGenerator.cpp */,
 				32AB9A061AC7816A0084DE43 /* MyoOscGenerator.h */,
 				4D04ADE419266DE6006E1C84 /* myo-osc.cpp */,
@@ -191,6 +196,7 @@
 				32AB9A071AC7816A0084DE43 /* MyoOscGenerator.cpp in Sources */,
 				4D04ADE519266DE6006E1C84 /* myo-osc.cpp in Sources */,
 				2E43743C19885228006D0623 /* OscPrintReceivedElements.cpp in Sources */,
+				327B67D91ADAF47E00763D77 /* MyoOscSettings.cpp in Sources */,
 				2E43743E19885228006D0623 /* OscTypes.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

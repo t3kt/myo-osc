@@ -16,122 +16,67 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <iomanip>
-#include <fstream>
+#include <cfloat>
 
-static bool readOutputTypeJson(const picojson::value& obj, OutputType* out) {
-  if (obj.is<picojson::null>()) {
-    out->enabled = false;
-    return true;
-  }
-  if (obj.is<bool>()) {
-    out->enabled = obj.get<bool>();
-    return true;
-  }
-  if (obj.is<std::string>()) {
-    out->path = obj.get<std::string>();
-    out->enabled = !out->path.empty();
-    return true;
-  }
-  if (obj.is<picojson::object>()) {
-    out->enabled = obj.get("enabled").evaluate_as_boolean();
-    if (out->enabled) {
-      auto pathval = obj.get("path");
-      if (!pathval.is<picojson::null>()) {
-        if (pathval.is<std::string>())
-          out->path = pathval.get<std::string>();
-        else
-          return false;
-      }
+//check for division by zero???
+//--------------------------------------------------
+//float ofMap(float value, float inputMin, float inputMax, float outputMin, float outputMax, bool clamp) {
+//  
+//  if (fabs(inputMin - inputMax) < FLT_EPSILON){
+//    ofLogWarning("ofMath") << "ofMap(): avoiding possible divide by zero, check inputMin and inputMax: " << inputMin << " " << inputMax;
+//    return outputMin;
+//  }
+
+static float mapValue(float value, Range inRange,
+                      Range outRange, bool clamp) {
+//  if (fabs(inRange.min - inRange.max) < FLT_EPSILON)
+  float outVal = ((value - inRange.min) / (inRange.max - inRange.min) * (outRange.max - outRange.min) + outRange.min);
+  if (clamp) {
+    if (outRange.max < outRange.min) {
+      if (outVal < outRange.max)
+        return outRange.max;
+      if (outVal > outRange.min)
+        return outRange.min;
+    } else {
+      if (outVal < outRange.min)
+        return outRange.min;
+      if (outVal > outRange.max)
+        return outRange.max;
     }
-    return true;
   }
-  return false;
+  return outVal;
 }
 
-static bool readBoolJson(const picojson::value& val, bool* out) {
-  if (val.is<picojson::null>())
-    return true;
-  if (val.is<bool>()) {
-    *out = val.get<bool>();
-    return true;
-  }
-  return false;
-}
-
-static bool readStringJson(const picojson::value& val, std::string* out) {
-  if (val.is<picojson::null>())
-    return true;
-  if (val.is<std::string>()) {
-    *out = val.get<std::string>();
-    return true;
-  }
-  return false;
-}
-
-static bool readIntJson(const picojson::value& val, int* out) {
-  if (val.is<picojson::null>())
-    return true;
-  if (val.is<double>()) {
-    *out = static_cast<int>(val.get<double>());
-    return true;
-  }
-  return false;
-}
-
-bool Settings::readJson(std::istream &input, Settings* settings) {
-  picojson::value obj;
-  std::string err = picojson::parse(obj, input);
-  if (!err.empty()) {
-    std::cerr << "Error parsing JSON: " << err << std::endl;
-    return false;
-  }
-  if (!readOutputTypeJson(obj.get("accel"), &settings->accel) ||
-      !readOutputTypeJson(obj.get("gyro"), &settings->gyro) ||
-      !readOutputTypeJson(obj.get("orientation"), &settings->orientation) ||
-      !readOutputTypeJson(obj.get("orientationQuat"), &settings->orientationQuat) ||
-      !readOutputTypeJson(obj.get("pose"), &settings->pose) ||
-      !readOutputTypeJson(obj.get("emg"), &settings->emg) ||
-      !readOutputTypeJson(obj.get("sync"), &settings->sync) ||
-      !readOutputTypeJson(obj.get("rssi"), &settings->rssi) ||
-      !readBoolJson(obj.get("console"), &settings->console) ||
-      !readBoolJson(obj.get("logOsc"), &settings->logOsc) ||
-      !readStringJson(obj.get("host"), &settings->hostname) ||
-      !readIntJson(obj.get("port"), &settings->port))
-    return false;
-  return true;
-}
-
-bool Settings::readJsonFile(const char* filename, Settings* settings) {
-  std::ifstream filein(filename);
-  if (filein.bad())
-    return false;
-  bool ok = readJson(filein, settings);
-  filein.close();
-  return ok;
-}
-
-std::ostream& operator<<(std::ostream& os, const OutputType& type) {
-  if (type)
-    os << type.path;
+static float scale(float value, const OutputType& type) {
+  if (type.scaling == Scaling::SCALE)
+    return mapValue(value, type.inrange, type.outrange, false);
+  else if(type.scaling == Scaling::CLAMP)
+    return mapValue(value, type.inrange, type.outrange, true);
   else
-    os << "(none)";
-  return os;
+    return value;
 }
 
-std::ostream& operator<<(std::ostream& os, const Settings& settings) {
-  static const std::string none("(none)");
-  return os << std::boolalpha << "Settings<\n"
-  << "  hostname: " << settings.hostname << "\n"
-  << "  port: " << settings.port << "\n"
-  << "  accel: " << settings.accel << "\n"
-  << "  gyro: " << settings.gyro << "\n"
-  << "  orientation: " << settings.orientation << "\n"
-  << "  pose: " << settings.pose << "\n"
-  << "  emg: " << settings.emg << "\n"
-  << "  sync: " << settings.sync << "\n"
-  << "  rssi: " << settings.rssi << "\n"
-  << "  console: " << settings.console << "\n"
-  << ">\n";
+static myo::Vector3<float> scale(myo::Vector3<float> value, const OutputType& type) {
+  if (type.scaling == Scaling::NONE)
+    return value;
+  return myo::Vector3<float>(scale(value.x(), type),
+                             scale(value.y(), type),
+                             scale(value.z(), type));
+}
+
+static myo::Quaternion<float> scale(myo::Quaternion<float> value, const OutputType& type) {
+  if (type.scaling == Scaling::NONE)
+    return value;
+  return myo::Quaternion<float>(scale(value.x(), type),
+                                scale(value.y(), type),
+                                scale(value.z(), type),
+                                scale(value.w(), type));
+}
+
+static int8_t scale(int8_t value, const OutputType& type) {
+  if (type.scaling == Scaling::NONE)
+    return value;
+  return static_cast<int8_t>(scale(static_cast<float>(value), type));
 }
 
 static void logPath(const std::string& path) {
@@ -159,68 +104,72 @@ static void logQuaterion(const myo::Quaternion<float>& quat) {
   logVal(quat.w());
 }
 
-void MyoOscGenerator::sendMessage(const std::string &path, int8_t val) {
-  send(beginMessage(path)
-       << val << osc::EndMessage);
+void MyoOscGenerator::sendMessage(const OutputType& type, int8_t val) {
+  send(beginMessage(type.path)
+       << scale(val, type) << osc::EndMessage);
   if (settings.logOsc) {
-    logPath(path);
-    logVal(val);
+    logPath(type.path);
+    logVal(scale(val, type));
     std::cout << std::endl;
   }
 }
 
-void MyoOscGenerator::sendMessage(const std::string &path, const int8_t* vals, int count) {
-  auto p = beginMessage(path);
+void MyoOscGenerator::sendMessage(const OutputType& type, const int8_t* vals, int count) {
+  auto p = beginMessage(type.path);
   for (int i = 0; i < count; ++i) {
-    p << vals[i];
+    p << scale(vals[i], type);
   }
   send(p << osc::EndMessage);
   if (settings.logOsc) {
-    logPath(path);
+    logPath(type.path);
     for (int i = 0; i < count; ++i) {
-      logVal(vals[i]);
+      logVal(scale(vals[i], type));
     }
     std::cout << std::endl;
   }
 }
 
-void MyoOscGenerator::sendMessage(const std::string &path, const char* val) {
-  send(beginMessage(path)
+void MyoOscGenerator::sendMessage(const OutputType& type, const char* val) {
+  send(beginMessage(type.path)
        << val << osc::EndMessage);
   if (settings.logOsc) {
-    logPath(path);
+    logPath(type.path);
     std::cout << "  " << std::right << val;
     std::cout << std::endl;
   }
 }
 
-void MyoOscGenerator::sendMessage(const std::string& path, const myo::Vector3<float>& vec) {
-  send(beginMessage(path)
+void MyoOscGenerator::sendMessage(const OutputType& type, myo::Vector3<float> vec) {
+  vec = scale(vec, type);
+  send(beginMessage(type.path)
        << vec.x() << vec.y() << vec.z() << osc::EndMessage);
   if (settings.logOsc) {
-    logPath(path);
+    logPath(type.path);
     logVector(vec);
     std::cout << std::endl;
   }
 }
 
-void MyoOscGenerator::sendMessage(const std::string& path, const myo::Vector3<float>& vec1, const myo::Vector3<float>& vec2) {
-  send(beginMessage(path)
+void MyoOscGenerator::sendMessage(const OutputType& type, myo::Vector3<float> vec1, myo::Vector3<float> vec2) {
+  vec1 = scale(vec1, type);
+  vec2 = scale(vec2, type);
+  send(beginMessage(type.path)
        << vec1.x() << vec1.y() << vec1.z()
        << vec2.x() << vec2.y() << vec2.z() << osc::EndMessage);
   if (settings.logOsc) {
-    logPath(path);
+    logPath(type.path);
     logVector(vec1);
     logVector(vec2);
     std::cout << std::endl;
   }
 }
 
-void MyoOscGenerator::sendMessage(const std::string& path, const myo::Quaternion<float>& quat) {
-  send(beginMessage(path)
+void MyoOscGenerator::sendMessage(const OutputType& type, myo::Quaternion<float> quat) {
+  quat = scale(quat, type);
+  send(beginMessage(type.path)
        << quat.x() << quat.y() << quat.z() << quat.w() << osc::EndMessage);
   if (settings.logOsc) {
-    logPath(path);
+    logPath(type.path);
     logQuaterion(quat);
     std::cout << std::endl;
   }
@@ -253,7 +202,7 @@ void MyoOscGenerator::onAccelerometerData(myo::Myo* myo, uint64_t timestamp, con
 {
   if (!settings.accel)
     return;
-  sendMessage(settings.accel.path, accel);
+  sendMessage(settings.accel, accel);
 }
 
 // units of deg/s
@@ -261,7 +210,7 @@ void MyoOscGenerator::onGyroscopeData(myo::Myo* myo, uint64_t timestamp, const m
 {
   if (!settings.gyro)
     return;
-  sendMessage(settings.gyro.path, gyro);
+  sendMessage(settings.gyro, gyro);
 }
 
 static myo::Vector3<float> quaternionToVector(const myo::Quaternion<float>& quat) {
@@ -282,11 +231,11 @@ void MyoOscGenerator::onOrientationData(myo::Myo* myo, uint64_t timestamp, const
     return;
   
   if (settings.orientationQuat)
-    sendMessage(settings.orientationQuat.path, quat);
+    sendMessage(settings.orientationQuat, quat);
   
   if (settings.orientation) {
     auto ypr = quaternionToVector(quat);
-    sendMessage(settings.orientation.path, ypr);
+    sendMessage(settings.orientation, ypr);
   }
 }
 
@@ -297,7 +246,7 @@ void MyoOscGenerator::onPose(myo::Myo* myo, uint64_t timestamp, myo::Pose pose)
   if (!settings.pose)
     return;
   
-  sendMessage(settings.pose.path, pose.toString().c_str());
+  sendMessage(settings.pose, pose.toString().c_str());
   
   // Vibrate the Myo whenever we've detected that the user has made a fist.
   if (pose == myo::Pose::fist) {
@@ -308,13 +257,13 @@ void MyoOscGenerator::onPose(myo::Myo* myo, uint64_t timestamp, myo::Pose pose)
 void MyoOscGenerator::onRssi(myo::Myo *myo, uint64_t timestamp, int8_t rssi) {
   if (!settings.rssi)
     return;
-  sendMessage(settings.rssi.path, rssi);
+  sendMessage(settings.rssi, rssi);
 }
 
 void MyoOscGenerator::onEmgData(myo::Myo* myo, uint64_t timestamp, const int8_t* emg) {
   if (!settings.emg)
     return;
-  sendMessage(settings.emg.path, emg, 8);
+  sendMessage(settings.emg, emg, 8);
 }
 
 // onArmSync() is called whenever Myo has recognized a setup gesture after someone has put it on their
@@ -323,7 +272,7 @@ void MyoOscGenerator::onArmSync(myo::Myo* myo, uint64_t timestamp, myo::Arm arm,
 {
   if (!settings.sync)
     return;
-  sendMessage(settings.sync.path, (arm == myo::armLeft ? "L" : "R"));
+  sendMessage(settings.sync, (arm == myo::armLeft ? "L" : "R"));
 }
 
 // onArmUnsync() is called whenever Myo has detected that it was moved from a stable position on a person's arm after
@@ -333,5 +282,5 @@ void MyoOscGenerator::onArmUnsync(myo::Myo* myo, uint64_t timestamp)
 {
   if (!settings.sync)
     return;
-  sendMessage(settings.sync.path, "-");
+  sendMessage(settings.sync, "-");
 }
