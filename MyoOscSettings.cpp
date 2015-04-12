@@ -141,14 +141,21 @@ namespace reader {
   static void readSettings(const value& val, Settings* out) {
     if (isnull(val))
       return;
-    readOutputType(val.get("accel"), &out->accel);
-    readOutputType(val.get("gyro"), &out->gyro);
-    readOutputType(val.get("orientation"), &out->orientation);
-    readOutputType(val.get("orientationQuat"), &out->orientation);
-    readOutputType(val.get("pose"), &out->pose);
-    readOutputType(val.get("emg"), &out->emg);
-    readOutputType(val.get("sync"), &out->sync);
-    readOutputType(val.get("rssi"), &out->rssi);
+#define READ_TYPE(type) do {\
+  std::cout << "reading " << #type << "..." << std::endl;\
+  readOutputType(val.get(#type), &out->type);\
+  std::cout << "... result: " << out->type << std::endl;\
+} while(0);
+    READ_TYPE(accel);
+    READ_TYPE(gyro);
+    READ_TYPE(orientation);
+    READ_TYPE(orientationQuat);
+    READ_TYPE(pose);
+    READ_TYPE(emg);
+    READ_TYPE(sync);
+    READ_TYPE(rssi);
+#undef READ_TYPE
+    std::cout << "reading other settings..." << std::endl;
     readBool(val.get("console"), &out->console);
     readBool(val.get("logOsc"), &out->logOsc);
     readString(val.get("host"), &out->hostname);
@@ -182,7 +189,7 @@ bool Settings::readJsonFile(const char* filename, Settings* settings) {
 }
 
 std::ostream& operator<<(std::ostream& os, const OutputType& type) {
-  if (type)
+  if (type.enabled)
     os << type.path;
   else
     os << "(none)";
