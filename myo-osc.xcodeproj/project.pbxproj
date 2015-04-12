@@ -51,6 +51,7 @@
 		327B67D11AD9E76400763D77 /* OscPrintReceivedElements.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = OscPrintReceivedElements.h; path = osc/OscPrintReceivedElements.h; sourceTree = "<group>"; };
 		327B67D21AD9E76400763D77 /* OscReceivedElements.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = OscReceivedElements.h; path = osc/OscReceivedElements.h; sourceTree = "<group>"; };
 		327B67D31AD9E76400763D77 /* OscTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = OscTypes.h; path = osc/OscTypes.h; sourceTree = "<group>"; };
+		327B67D41AD9EBBF00763D77 /* picojson.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = picojson.h; path = libs/picojson.h; sourceTree = "<group>"; };
 		32AB9A001AC76B0C0084DE43 /* optionparser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = optionparser.h; sourceTree = SOURCE_ROOT; };
 		32AB9A051AC7816A0084DE43 /* MyoOscGenerator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MyoOscGenerator.cpp; sourceTree = SOURCE_ROOT; };
 		32AB9A061AC7816A0084DE43 /* MyoOscGenerator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MyoOscGenerator.h; sourceTree = SOURCE_ROOT; };
@@ -73,6 +74,7 @@
 		32AB9A011AC7802A0084DE43 /* libs */ = {
 			isa = PBXGroup;
 			children = (
+				327B67D41AD9EBBF00763D77 /* picojson.h */,
 				327B67CC1AD9E76400763D77 /* MessageMappingOscPacketListener.h */,
 				327B67CD1AD9E76400763D77 /* OscException.h */,
 				327B67CE1AD9E76400763D77 /* OscHostEndianness.h */,

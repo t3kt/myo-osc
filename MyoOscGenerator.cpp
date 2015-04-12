@@ -17,6 +17,89 @@
 #include <cmath>
 #include <iomanip>
 
+static bool readOutputTypeJson(const picojson::value& obj, OutputType* out) {
+  if (obj.is<picojson::null>()) {
+    out->enabled = false;
+    return true;
+  }
+  if (obj.is<bool>()) {
+    out->enabled = obj.get<bool>();
+    return true;
+  }
+  if (obj.is<std::string>()) {
+    out->path = obj.get<std::string>();
+    out->enabled = !out->path.empty();
+    return true;
+  }
+  if (obj.is<picojson::object>()) {
+    out->enabled = obj.get("enabled").evaluate_as_boolean();
+    if (out->enabled) {
+      auto pathval = obj.get("path");
+      if (!pathval.is<picojson::null>()) {
+        if (pathval.is<std::string>())
+          out->path = pathval.get<std::string>();
+        else
+          return false;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
+static bool readBoolJson(const picojson::value& val, bool* out) {
+  if (val.is<picojson::null>())
+    return true;
+  if (val.is<bool>()) {
+    *out = val.get<bool>();
+    return true;
+  }
+  return false;
+}
+
+static bool readStringJson(const picojson::value& val, std::string* out) {
+  if (val.is<picojson::null>())
+    return true;
+  if (val.is<std::string>()) {
+    *out = val.get<std::string>();
+    return true;
+  }
+  return false;
+}
+
+static bool readIntJson(const picojson::value& val, int* out) {
+  if (val.is<picojson::null>())
+    return true;
+  if (val.is<double>()) {
+    *out = static_cast<int>(val.get<double>());
+    return true;
+  }
+  return false;
+}
+
+bool Settings::readJson(std::istream &input, Settings* settings) {
+  picojson::value obj;
+  std::string err = picojson::parse(obj, input);
+  if (!err.empty()) {
+    std::cerr << "Error parsing JSON: " << err << std::endl;
+    return false;
+  }
+  if (!readOutputTypeJson(obj.get("accel"), &settings->accel) ||
+      !readOutputTypeJson(obj.get("gyro"), &settings->gyro) ||
+      !readOutputTypeJson(obj.get("orientation"), &settings->orientation) ||
+      !readOutputTypeJson(obj.get("orientationQuat"), &settings->orientationQuat) ||
+      !readOutputTypeJson(obj.get("pose"), &settings->pose) ||
+      !readOutputTypeJson(obj.get("emg"), &settings->emg) ||
+      !readOutputTypeJson(obj.get("sync"), &settings->sync) ||
+      !readOutputTypeJson(obj.get("rssi"), &settings->rssi) ||
+      !readBoolJson(obj.get("console"), &settings->console) ||
+      !readBoolJson(obj.get("logOsc"), &settings->logOsc) ||
+      !readStringJson(obj.get("host"), &settings->hostname) ||
+      !readIntJson(obj.get("port"), &settings->port))
+    return false;
+  return false;
+}
+
 std::ostream& operator<<(std::ostream& os, const OutputType& type) {
   if (type)
     os << type.path;

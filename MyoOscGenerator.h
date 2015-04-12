@@ -26,15 +26,15 @@
 #include "osc/OscOutboundPacketStream.h"
 #include "ip/UdpSocket.h"
 
+#include "picojson.h"
+
 #define OUTPUT_BUFFER_SIZE 1024
 
 struct OutputType {
   bool enabled;
   std::string path;
   
-  operator bool() const {
-    return enabled;
-  }
+  operator bool() const { return enabled; }
 };
 
 std::ostream& operator<<(std::ostream& os, const OutputType& type);
@@ -54,6 +54,8 @@ struct Settings {
   
   std::string hostname;
   int port;
+  
+  static bool readJson(std::istream& input, Settings* settings);
 };
 
 std::ostream& operator<<(std::ostream& os, const Settings& settings);
