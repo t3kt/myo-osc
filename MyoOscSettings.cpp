@@ -141,6 +141,19 @@ namespace reader {
   static void readSettings(const value& val, Settings* out) {
     if (isnull(val))
       return;
+    if (!val.is<object>())
+      throw std::invalid_argument("Invalid Settings value: " + val.serialize());
+    const value& allval = val.get("all");
+    if (!isnull(allval)) {
+      out->accel.enabled = true;
+      out->gyro.enabled = true;
+      out->orientation.enabled = true;
+      out->orientationQuat.enabled = true;
+      out->pose.enabled = true;
+      out->emg.enabled = true;
+      out->sync.enabled = true;
+      out->rssi.enabled = true;
+    }
 #define READ_TYPE(type) do {\
   std::cout << "reading " << #type << "..." << std::endl;\
   readOutputType(val.get(#type), &out->type);\
@@ -161,6 +174,16 @@ namespace reader {
     readString(val.get("host"), &out->hostname);
     readNumber(val.get("port"), &out->port);
   }
+  
+  static bool readSettingsChecked(const value& val, Settings* out) {
+    try {
+      readSettings(val, out);
+      return true;
+    } catch (const std::exception& ex) {
+      std::cerr << "Error reading JSON: " << ex.what() << std::endl;
+      return false;
+    }
+  }
 }
 
 bool Settings::readJson(std::istream &input, Settings* settings) {
@@ -170,16 +193,20 @@ bool Settings::readJson(std::istream &input, Settings* settings) {
     std::cerr << "Error parsing JSON: " << err << std::endl;
     return false;
   }
-  try {
-    reader::readSettings(obj, settings);
-    return true;
-  } catch (const std::exception& ex) {
-    std::cerr << "Error reading JSON: " << ex.what() << std::endl;
-    return false;
-  }
+  return reader::readSettingsChecked(obj, settings);
 }
 
-bool Settings::readJsonFile(const char* filename, Settings* settings) {
+bool Settings::readJson(const std::string& jsonText, Settings *settings) {
+  picojson::value obj;
+  std::string err = picojson::parse(obj, jsonText);
+  if (!err.empty()) {
+    std::cerr << "Error parsing JSON: " << err << std::endl;
+    return false;
+  }
+  return reader::readSettingsChecked(obj, settings);
+}
+
+bool Settings::readJsonFile(const std::string& filename, Settings* settings) {
   std::ifstream filein(filename);
   if (filein.bad())
     return false;

@@ -87,7 +87,7 @@ const char usageText[] =
 "   modified by tekt -- https://t3kt.net\n";
 const option::Descriptor usage[] = {
   {UNKNOWN,     0,            "",   "",           Arg::Unknown,   usageText},
-  {CONFIG,      0,            "c",  "config",     Arg::Required,  "--config path/to/config.json"},
+  {CONFIG,      0,            "c",  "config",     Arg::NonEmpty,  "--config path/to/config.json or --config '{\"accel\":true}'"},
   {ACCEL,       ENABLE,       "a",  "accel",      Arg::Optional,  "--accel Enable accelerometer output"},
   {ACCEL,       DISABLE,      "A",  "noaccel",    Arg::None,      "--noaccel Disable accelerometer output"},
   {GYRO,        ENABLE,       "g",  "gyro",       Arg::Optional,  "--gyro Enable gyroscope output"},
@@ -177,10 +177,20 @@ bool parseArgs(int argc, char **argv, Settings* settings) {
         settings->logOsc = opt.type() == ENABLE;
         break;
       case CONFIG:
-        if (!Settings::readJsonFile(opt.arg, settings)) {
-          std::cout << "Error reading config json" << std::endl;
-          return false;
+      {
+        std::string argStr(opt.arg);
+        if (argStr[0] == '{') {
+          if (!Settings::readJson(argStr, settings)) {
+            std::cout << "Error reading config json" << std::endl;
+            return false;
+          }
+        } else {
+          if (!Settings::readJsonFile(argStr, settings)) {
+            std::cout << "Error reading config json" << std::endl;
+            return false;
+          }
         }
+      }
         break;
       case UNKNOWN:
         std::cout << "Unknown option: " << std::string(opt.name, opt.namelen) << "\n\n";
