@@ -1,0 +1,18 @@
+{
+	"accel": true,
+	"gyro": "/omg/gyrooooo",
+	"orientation": {
+		"enabled": true,
+		"scale": "scale",
+		"in": [-5.0, 5.0],
+		"out": {
+			"min": -20,
+			"max": 25
+		}
+	},
+	"emg": {
+		"path": "/wtf/emg"
+	},
+	"console": false,
+	"logOsc": false
+}
