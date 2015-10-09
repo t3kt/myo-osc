@@ -1,20 +1,19 @@
-# [Myo-OSC](http://samy.pl/myo-osc/)
+# [Myo-OSC]
 
 OSC bridge for Thalmic Myo gesture control armband for Windows and Mac OS X 10.8+.
 
-By [Samy Kamkar](http://samy.pl)
+Original version by [Samy Kamkar](http://samy.pl), this fork modified by [tekt](http://t3kt.net).
 
-Myo-OSC is a C++ application designed to take hand gestures, accelerometer, gyroscope and magnetometer data from the [Thalmic Labs Myo](https://www.thalmic.com/en/myo/) armband and output it over OSC. This allows incredible control of virtually any device or application just by waving or flailing your arm or hand around like a madman.
+Myo-OSC is a C++ application designed to take hand gestures, accelerometer, gyroscope, magnetometer, and other data from the [Thalmic Labs Myo](https://www.thalmic.com/en/myo/) armband and output it over OSC. This allows incredible control of virtually any device or application just by waving or flailing your arm or hand around like a madman.
 
 Binaries for both Windows and OS X are included in the root directory (myo-osc.win.exe / myo-osc.osx.bin).
 
-I've built this and integrated it to control various things in my house and car using Raspberry Pi and Arduinos, including lights (over RF), TV (over IR), receiver (over IR), iTunes, coffee machine (over BLE), music in my car (over BLE), presentations (over IR), and Ableton/music production/DJing/VJing (over MIDI and OSC).
+From Samy Kamkar:
+> I've built this and integrated it to control various things in my house and car using Raspberry Pi and Arduinos, including lights (over RF), TV (over IR), receiver (over IR), iTunes, coffee machine (over BLE), music in my car (over BLE), presentations (over IR), and Ableton/music production/DJing/VJing (over MIDI and OSC).
+> You can also send any OSC data over a network.
+> By [@SamyKamkar](https://twitter.com/samykamkar) // <code@samy.pl> // <http://samy.pl> // Mar 3, 2014
 
-You can also send any OSC data over a network.
-
-by [@SamyKamkar](https://twitter.com/samykamkar) // <code@samy.pl> // <http://samy.pl> // Mar 3, 2014
-
-Code available on [github](http://samy.pl/myo-osc/)
+Code available on [github](http://github.com/t3kt/myo-osc)
 
 ------
 
@@ -31,10 +30,71 @@ You can acquire Myo-OSC from github (redirects to latest branch): <http://samy.p
 ------
 
 ## Usage
-$ ./myo-osc [IP address (default: 127.0.0.1)] [OSC port (default: 7777)]
+$./myo-osc [options] [IP address (default: 127.0.0.1)] [OSC port (default: 7777)]
+* Options:
+  * --config path/to/config.json or --config '{"accel":true}'
+    * *see JSON section below*
+  * --[no]accel [<path>] Enable/disable accelerometer output, using OSC <path> if specified
+    * default path "/myo/accel"
+  * --[no]gyro [<path>] Enable/disable gyroscope output, using OSC <path> if specified
+    * default path "/myo/gyro"
+  * --[no]orient [<path>] Enable/disable orientation output, using OSC <path> if specified
+    * default path "/myo/orientation"
+  * --[no]quat [<path>] Enable/disable orientation quaternion output, using OSC <path> if specified
+    * default path "/myo/orientationquat"
+  * --[no]pose [<path>] Enable/disable pose output, using OSC <path> if specified
+    * default path "/myo/pose"
+  * --[no]emg [<path>] Enable/disable EMG output, using OSC <path> if specified
+    * default path "/myo/emg"
+  * --[no]rssi [<path>] Enable/disable RSSI (signal strength) output, using OSC <path> if specified
+    * default path "/myo/rssi"
+  * --[no]sync [<path>] Enable/disable sync/unsync output, using OSC <path> if specified
+    * default path "/myo/arm"
+  * --log Enable OSC debug logging.
+  * --help Print usage and exit.
 
-This will output the following OSC data
+## JSON Configuration
+Configuration JSON provides a way to set the same options as can be set with command line flags, but with more detailed settings.
+The config json should have the following structure:
+```
+{
+   "host": "localhost",
+   "port": 12345,
+   "console": true|false,
+   "logOsc": true|false,
 
+   "accel": __output_type_settings__,
+   "gyro": __output_type_settings__,
+   "orientation": __output_type_settings__,
+   "orientationQuat": __output_type_settings__,
+   "pos": __output_type_settings__,
+   "emg": __output_type_settings__,
+   "sync": __output_type_settings__,
+   "rssi": __output_type_settings__
+}
+```
+
+Each output type (e.g. accel, gyro, emg) can be specified in one of two ways. To enable/disable it with its default settings, use a simple boolean true/false. To provide detailed settings, use an object with the following structure:
+```
+{
+	"enabled": true|false,
+	"path": "/foo/accel",
+	"scale":  "none" | "scale" | "clamp",  // "none" means just send the raw values,
+								   "scale" means scale the value from the "in" range to the "out" range,
+								   "clamp" means scale, and clamp the output to the "out" range (so if it's greater than the max, it just outputs the max, etc.)
+	"in": [-5.0, 5.0],   // expected range for the sensor value, either an array of 2 numbers, or an object (see "out")
+	"out": { "min": -20, "max": 25}   // range to scale the sensor value to, either an array of 2 numbers or an object with "min" and "max" fields
+}
+```
+
+* "scale" - one of the following strings:
+  * "none" (default) - output the raw sensor values
+  * "scale" - scale the values based on the "in"/"out" ranges
+  * "clamp" - scale the values based on the "in"/"out" ranges, but clamp the output to the "out" range
+* "in" - expected range for the sensor value, either an array of 2 numbers or an object such as {"min": -20, "max": 25}
+* "out" - range to scale the sensor value to (same format as "in")
+
+## OSC Output
 ```
 /myo/pose s MAC s pose
 
@@ -62,23 +122,25 @@ Examples:
 
 ------
 
-### Software
-
-#### Myo-OSC
-This software.
+### Third Party Libraries
 
 #### oscpack
-We also use [oscpack](https://code.google.com/p/oscpack/), a C++ OSC (Open Sound Control) library.
+myo-osc uses [oscpack](https://code.google.com/p/oscpack/), a C++ OSC (Open Sound Control) library.
+
+#### picojson
+myo-osc uses [picojson](https://github.com/kazuho/picojson), a C++ JSON parsing library.
 
 ### Hardware
-
-#### Thalmic Labs Myo Alpha
-Currently, Thalmic Labs have only released Myo Alpha to select developers. Sign up for the Developer Kit coming out later this year or pre-order the consumer version [here](https://www.thalmic.com/en/myo/).
+[Thalmic Labs Myo](https://www.thalmic.com/en/myo/).
 
 ## Questions?
+From tekt:
+> If you have questions or comments, I can be reached at int3kt@gmail.com
+> Check out <http://t3kt.net> for my other projects
+> Also, I'm on twitter [@int3kt](https://twitter.com/int3kt)
+> Also, I'm on facebook [@int3kt](https://facebook.com/int3kt)
 
-Feel free to contact me with any questions!
-
-You can reach me at <code@samy.pl>.
-
-Follow [@SamyKamkar](https://twitter.com/samykamkar) on Twitter or check out <http://samy.pl> for my other projects.
+From Samy Kamkar:
+> Feel free to contact me with any questions!
+> You can reach me at <code@samy.pl>.
+> Follow [@SamyKamkar](https://twitter.com/samykamkar) on Twitter or check out <http://samy.pl> for my other projects.
