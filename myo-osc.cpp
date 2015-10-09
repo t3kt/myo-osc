@@ -130,7 +130,7 @@ bool parseArgs(int argc, char **argv, Settings* settings) {
   if (parse.error())
     return false;
   
-  if (options[HELP] && argc == 0) {
+  if (options[HELP] || argc == 0) {
     option::printUsage(std::cout, usage);
     return false;
   }
